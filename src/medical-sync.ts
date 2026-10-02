@@ -30,57 +30,66 @@ export async function syncMedicalFile(
 	showSuccessNotice = false,
 ): Promise<void> {
 	if (file.extension !== 'md') {
-		if (showSuccessNotice) {
-			new Notice('Medical Anki sync stopped: active file is not markdown.')
-		}
 		return
 	}
 
 	const markdown = await plugin.app.vault.read(file)
 	if (!/^## Anki\s*$/imu.test(markdown)) {
-		if (showSuccessNotice) {
-			new Notice("Medical Anki sync stopped: active note has no '## Anki' section.")
-		}
 		return
 	}
 
 	const parsed = parseMedicalAnkiDocument(markdown)
 	if (parsed.errors.length > 0) {
-		new Notice(`Medical Anki sync stopped: ${parsed.errors[0]}`)
-		console.warn('Medical Anki parser errors', parsed.errors)
-		return
+		console.warn('Medical Anki parser skipped malformed content', {
+			errors: parsed.errors,
+			path: file.path,
+		})
 	}
 
-	if (parsed.targetDeck === null) {
-		new Notice('Medical Anki sync stopped: TARGET DECK missing.')
+	if (parsed.targetDeck === null || parsed.cards.length === 0) {
 		return
 	}
 
 	const client = new MedicalAnkiConnectClient(plugin.settings.ankiConnect)
 	const synced: { card: ParsedMedicalCardBlock; noteId: string }[] = []
+	let skipped = 0
 
 	for (const card of parsed.cards) {
 		const modelName = card.modelName || 'Cloze_obsidian'
 		const requiredFields = modelName === 'Cloze_obsidian' ? CLOZE_OBSIDIAN_FIELDS : Object.keys(card.fields)
-		const missing = await client.findMissingModelFields(modelName, requiredFields)
-		if (missing.length > 0) {
-			new Notice(`Medical Anki sync stopped: model '${modelName}' lacks field '${missing[0]}'.`)
-			return
-		}
 
-		const payload: MedicalAnkiNotePayload = {
-			deckName: parsed.targetDeck,
-			fields: card.fields,
-			modelName,
-			tags: [...new Set([...parsed.fileTags, ...card.tags])],
-		}
+		try {
+			if ((card.fields.Text?.trim() ?? '').length === 0) {
+				throw new Error(`Card block for '${modelName}' has no Text field.`)
+			}
 
-		if (card.noteId === null) {
-			const noteId = await client.addNote(payload)
-			synced.push({ card, noteId })
-		} else {
-			await client.updateNote(card.noteId, payload)
-			synced.push({ card, noteId: card.noteId })
+			const missing = await client.findMissingModelFields(modelName, requiredFields)
+			if (missing.length > 0) {
+				throw new Error(`Model '${modelName}' lacks field '${missing[0]}'.`)
+			}
+
+			const payload: MedicalAnkiNotePayload = {
+				deckName: parsed.targetDeck,
+				fields: card.fields,
+				modelName,
+				tags: [...new Set([...parsed.fileTags, ...card.tags])],
+			}
+
+			if (card.noteId === null) {
+				const noteId = await client.addNote(payload)
+				synced.push({ card, noteId })
+			} else {
+				await client.updateNote(card.noteId, payload)
+				synced.push({ card, noteId: card.noteId })
+			}
+		} catch (error) {
+			skipped += 1
+			console.warn('Medical Anki card skipped', {
+				error,
+				modelName,
+				path: file.path,
+				text: card.fields.Text,
+			})
 		}
 	}
 
@@ -90,8 +99,12 @@ export async function syncMedicalFile(
 	}
 
 	if (showSuccessNotice || plugin.settings.verboseNotices) {
+		if (synced.length === 0 && skipped === 0) {
+			return
+		}
+
 		new Notice(
-			`Medical Anki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced to ${parsed.targetDeck}.`,
+			`Medical Anki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced to ${parsed.targetDeck}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
 		)
 	}
 }
