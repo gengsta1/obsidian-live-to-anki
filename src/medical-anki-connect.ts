@@ -26,6 +26,8 @@ export class MedicalAnkiConnectClient {
 	}
 
 	public async addNote(note: MedicalAnkiNotePayload): Promise<string> {
+		await this.createDeck(note.deckName)
+
 		const result = await this.invoke<number>('addNote', {
 			note: {
 				deckName: note.deckName,
@@ -35,6 +37,10 @@ export class MedicalAnkiConnectClient {
 			},
 		})
 		return String(result)
+	}
+
+	public async createDeck(deckName: string): Promise<void> {
+		await this.invoke('createDeck', { deck: deckName })
 	}
 
 	public async findMissingModelFields(modelName: string, requiredFields: string[]): Promise<string[]> {
