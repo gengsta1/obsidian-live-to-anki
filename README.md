@@ -1,6 +1,6 @@
 <!-- title({titleCase: true, postfix: " Plugin"}) -->
 
-# Yanki Obsidian Plugin
+# Obsidian Live to Anki Plugin
 
 <!-- /title -->
 
@@ -29,11 +29,40 @@
 
 <!-- short-description -->
 
-**An Obsidian plugin that syncs flashcards from a folder in your vault to Anki. Pure Markdown syntax. No fuss.**
+**A Yanki-based Obsidian plugin fork for syncing embedded Anki card blocks from long-form Obsidian notes to Anki.**
 
 <!-- /short-description -->
 
-## Obsidian Live to Anki fork notes
+## What is different in this fork?
+
+This fork is built for a different workflow than the usual Obsidian-to-Anki plugins.
+
+Most Obsidian-to-Anki workflows treat a whole note, heading, folder, or special code block as the sync unit. This fork adds a command that treats each `START` / `END` block inside a note's `## Anki` section as its own Anki note.
+
+That means one large Obsidian master note can contain:
+
+- normal study text above `## Anki`
+- one explicit `TARGET DECK`
+- shared `FILE TAGS`
+- many individual Anki cards
+- stable Anki note IDs written back after each card block
+
+The important differences:
+
+- **Embedded cards, not one file per card.** A long Obsidian note can hold many Anki cards at the bottom.
+- **Decks come from `TARGET DECK`.** The new sync command does not derive the deck from the Obsidian folder path.
+- **Tags are merged.** `FILE TAGS` are combined with each card's own `Tags` field.
+- **Stable updates.** New cards get `<!--ANKI-NOTE-ID: ...-->` after `END`, so later syncs update the same Anki note instead of creating duplicates.
+- **Custom note type support.** The medical workflow is designed around `Cloze_obsidian` and its fields: `Text`, `Back Extra`, `Definitionen`, `Mechanismus`, `Klinik`, `Dosis`, `Cave`, `Merksprüche`, `Eigene Prüfungsfragen`, and `One by one`.
+- **No automatic deletion yet.** Version 0.1 only creates and updates Anki notes. Removing Anki cards automatically from deleted blocks should be added later, after the create/update path is stable.
+
+The original Yanki folder-sync command is still present for reference. The fork-specific command is:
+
+```text
+Obsidian Live to Anki: Sync current medical Anki blocks to Anki
+```
+
+## Medical block format
 
 This local fork adds a medical block sync command for embedded cards inside a larger Obsidian master note:
 
@@ -62,6 +91,10 @@ Run `Obsidian Live to Anki: Sync current medical Anki blocks to Anki`.
 New cards get a stable `<!--ANKI-NOTE-ID: ...-->` comment after `END`, so later syncs update the same Anki note instead of creating duplicates.
 
 The original Yanki folder-sync command is still present for reference, but the new medical workflow uses `TARGET DECK` directly instead of deriving decks from folders.
+
+## Upstream Yanki documentation
+
+The rest of this README is mostly inherited from upstream Yanki. It documents Yanki's original folder-based sync behavior. The fork-specific behavior is described above.
 
 <!-- toc({ depth: 2 }) -->
 
