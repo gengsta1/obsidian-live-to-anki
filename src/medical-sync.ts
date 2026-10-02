@@ -9,13 +9,19 @@ import {
 } from './medical-parser'
 
 export async function syncCurrentMedicalNote(plugin: YankiPlugin): Promise<void> {
-	const file = plugin.app.workspace.getActiveFile()
-	if (file === null) {
-		new Notice('No active Markdown file.')
-		return
-	}
+	try {
+		const file = plugin.app.workspace.getActiveFile()
+		if (file === null) {
+			new Notice('No active markdown file.')
+			return
+		}
 
-	await syncMedicalFile(plugin, file, true)
+		await syncMedicalFile(plugin, file, true)
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		console.error('Medical Anki sync failed', error)
+		new Notice(`Medical Anki sync failed: ${message}`, 10_000)
+	}
 }
 
 export async function syncMedicalFile(
@@ -24,11 +30,17 @@ export async function syncMedicalFile(
 	showSuccessNotice = false,
 ): Promise<void> {
 	if (file.extension !== 'md') {
+		if (showSuccessNotice) {
+			new Notice('Medical Anki sync stopped: active file is not markdown.')
+		}
 		return
 	}
 
 	const markdown = await plugin.app.vault.read(file)
 	if (!/^## Anki\s*$/imu.test(markdown)) {
+		if (showSuccessNotice) {
+			new Notice("Medical Anki sync stopped: active note has no '## Anki' section.")
+		}
 		return
 	}
 
@@ -78,6 +90,8 @@ export async function syncMedicalFile(
 	}
 
 	if (showSuccessNotice || plugin.settings.verboseNotices) {
-		new Notice(`Medical Anki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced.`)
+		new Notice(
+			`Medical Anki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced to ${parsed.targetDeck}.`,
+		)
 	}
 }
