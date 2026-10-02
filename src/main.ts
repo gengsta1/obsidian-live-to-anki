@@ -392,7 +392,10 @@ export default class YankiPlugin extends Plugin {
 		// TODO check if this is necessary first
 		await this.saveSettings()
 		this.addSettingTab(this.settingsTab)
-		this.addRibbonIcon('refresh-cw', 'Sync Main Notes medical Anki blocks', () => {
+		this.addRibbonIcon('file-check', 'Sync this note to Anki', () => {
+			void syncCurrentMedicalNote(this)
+		})
+		this.addRibbonIcon('folder-sync', 'Sync all Main Notes to Anki', () => {
 			void syncMainNotesMedicalAnki(this)
 		})
 
@@ -414,7 +417,7 @@ export default class YankiPlugin extends Plugin {
 				void syncCurrentMedicalNote(this)
 			},
 			id: 'sync-medical-blocks',
-			name: 'Sync current medical Anki blocks to Anki',
+			name: 'Sync this note medical Anki blocks to Anki',
 		})
 
 		this.addCommand({
@@ -422,7 +425,7 @@ export default class YankiPlugin extends Plugin {
 				void syncMainNotesMedicalAnki(this)
 			},
 			id: 'sync-main-notes-medical-blocks',
-			name: 'Sync Main Notes medical Anki blocks to Anki',
+			name: 'Sync all Main Notes medical Anki blocks to Anki',
 		})
 
 		// Spot any changes since last session
