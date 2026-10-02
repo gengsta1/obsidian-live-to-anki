@@ -3,6 +3,8 @@ import type { AnkiConnection } from './anki'
 
 declare module 'wdio-obsidian-service' {
 	interface InstalledPlugins {
+		'obsidian-live-to-anki': YankiPlugin
+		obsidianLiveToAnki: YankiPlugin
 		yanki: YankiPlugin
 	}
 }

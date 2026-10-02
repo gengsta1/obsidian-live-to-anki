@@ -1,7 +1,7 @@
 {
-	"name": "yanki-obsidian",
-	"version": "1.12.2",
-	"description": "An Obsidian plugin that syncs flashcards from a folder in your vault to Anki. Pure Markdown syntax. No fuss.",
+	"name": "obsidian-live-to-anki",
+	"version": "0.1.0",
+	"description": "An Obsidian plugin that syncs embedded medical Anki blocks from Obsidian master notes to Anki.",
 	"keywords": [
 		"obsidian",
 		"obsidian-md",
@@ -13,17 +13,16 @@
 		"sync",
 		"pkm"
 	],
-	"homepage": "https://github.com/kitschpatrol/yanki-obsidian",
-	"bugs": "https://github.com/kitschpatrol/yanki-obsidian/issues",
+	"homepage": "",
+	"bugs": "",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/kitschpatrol/yanki-obsidian.git"
+		"url": "git+https://github.com/gengsta1/obsidian-live-to-anki.git"
 	},
 	"license": "MIT",
 	"author": {
-		"name": "Eric Mika",
-		"email": "eric@ericmika.com",
-		"url": "https://ericmika.com"
+		"name": "gengsta1",
+		"url": "https://github.com/gengsta1"
 	},
 	"type": "module",
 	"main": "./dist/main.js",
@@ -34,8 +33,10 @@
 		"dev": "shx rm -rf ./dist && tsx ./scripts/build.ts",
 		"fix": "ksc fix",
 		"lint": "ksc lint",
+		"install:vault": "pnpm build && node scripts/install-medical-plugin.mjs",
 		"release": "bumpp package.json manifest.json -x 'pnpm build' -c 'Release: %s' --tag '%s'",
-		"test": "pnpm build --no-demo && vitest run",
+		"test": "pnpm test:unit && pnpm build --no-demo && vitest run",
+		"test:unit": "vitest run --config vitest.unit.config.ts",
 		"test:e2e": "vitest run",
 		"yanki:deploy-local": "shx cp -r ./dist/* ~/Notes/Vault/.obsidian/plugins/yanki",
 		"yanki:use-local": "pnpm remove yanki && pnpm add -D ../yanki",
@@ -85,11 +86,11 @@
 		}
 	},
 	"obsidian": {
-		"author": "Kitschpatrol",
-		"description": "Sync flashcards from a folder in your vault to Anki. Pure Markdown syntax. No fuss.",
-		"id": "yanki",
+		"author": "gengsta1, based on Yanki by Kitschpatrol",
+		"description": "Sync embedded medical Anki blocks from Obsidian master notes to Anki.",
+		"id": "obsidian-live-to-anki",
 		"isDesktopOnly": true,
 		"minAppVersion": "1.9.12",
-		"name": "Yanki"
+		"name": "Obsidian Live to Anki"
 	}
 }

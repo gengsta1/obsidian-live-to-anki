@@ -33,6 +33,36 @@
 
 <!-- /short-description -->
 
+## Obsidian Live to Anki fork notes
+
+This local fork adds a medical block sync command for embedded cards inside a larger Obsidian master note:
+
+```text
+## Anki
+TARGET DECK: Medicine::Diagnoses::Example
+FILE TAGS: medicine example
+
+START
+Cloze_obsidian
+Text: ...
+Back Extra: ...
+Definitionen:
+Mechanismus:
+Klinik:
+Dosis:
+Cave:
+Merksprüche:
+Eigene Prüfungsfragen:
+One by one:
+Tags: diagnosis
+END
+```
+
+Run `Obsidian Live to Anki: Sync current medical Anki blocks to Anki`.
+New cards get a stable `<!--ANKI-NOTE-ID: ...-->` comment after `END`, so later syncs update the same Anki note instead of creating duplicates.
+
+The original Yanki folder-sync command is still present for reference, but the new medical workflow uses `TARGET DECK` directly instead of deriving decks from folders.
+
 <!-- toc({ depth: 2 }) -->
 
 ## Table of contents
@@ -845,7 +875,7 @@ Thanks to Alex Yatskov for creating [AnkiConnect](https://git.sr.ht/~foosoft/ank
 
 PJ Eby's [Hot-Reload](https://github.com/pjeby/hot-reload) Obsidian plugin is a huge help during development.
 
-Obsidian plugins by [Daniel Rodríguez Rivero](https://github.com/danielo515) and [Liam Cain](https://github.com/liamcain) provided helpful examples of common patterns.
+Obsidian plugins by the authors of [Modal Form](https://github.com/danielo515/obsidian-modal-form) and [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) provided helpful examples of common patterns.
 
 ## Contributing
 

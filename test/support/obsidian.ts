@@ -53,7 +53,7 @@ async function saveDiagnostics(
 				)
 				// A failed plugin load may leave the typed plugin absent at runtime.
 				// eslint-disable-next-line ts/no-unnecessary-condition
-				return { files, stats: plugins.yanki?.settings.stats }
+				return { files, stats: plugins.obsidianLiveToAnki?.settings.stats }
 			}),
 		),
 	])
@@ -135,7 +135,10 @@ export const test = base.extend<{ desktop: Desktop }>({
 			)
 			await browser.executeObsidian(
 				async ({ plugins }, connection, testNamespace) => {
-					const plugin = plugins.yanki
+					const plugin = plugins.obsidianLiveToAnki
+					if (plugin === undefined) {
+						throw new Error(`Plugin not found. Available plugin keys: ${Object.keys(plugins).join(', ')}`)
+					}
 					plugin.settings.ankiConnect = {
 						host: 'http://127.0.0.1',
 						key: connection.key,
@@ -170,7 +173,7 @@ export const test = base.extend<{ desktop: Desktop }>({
 export async function openSettings(browser: WebdriverIO.Browser): Promise<string> {
 	const mainWindow = await browser.getWindowHandle()
 	await browser.executeObsidian(({ plugins }) => {
-		plugins.yanki.openSettingsTab()
+		plugins.obsidianLiveToAnki.openSettingsTab()
 	})
 	await browser.waitUntil(
 		async () => {
@@ -205,8 +208,8 @@ export async function closeSettings(browser: WebdriverIO.Browser, mainWindow: st
  */
 export async function watchFolders(browser: WebdriverIO.Browser, folders = ['Anki']) {
 	await browser.executeObsidian(async ({ plugins }, watchedFolders) => {
-		plugins.yanki.settings.folders = watchedFolders
-		await plugins.yanki.saveSettings()
+		plugins.obsidianLiveToAnki.settings.folders = watchedFolders
+		await plugins.obsidianLiveToAnki.saveSettings()
 	}, folders)
 }
 
@@ -215,12 +218,12 @@ export async function watchFolders(browser: WebdriverIO.Browser, folders = ['Ank
  * errors.
  */
 export async function sync(browser: WebdriverIO.Browser) {
-	const before = await browser.executeObsidian(({ plugins }) => plugins.yanki.settings.stats.sync)
-	await browser.executeObsidianCommand('yanki:sync')
+	const before = await browser.executeObsidian(({ plugins }) => plugins.obsidianLiveToAnki.settings.stats.sync)
+	await browser.executeObsidianCommand('obsidian-live-to-anki:sync')
 	await browser.waitUntil(
 		async () => {
 			const stats = await browser.executeObsidian(
-				({ plugins }) => plugins.yanki.settings.stats.sync,
+				({ plugins }) => plugins.obsidianLiveToAnki.settings.stats.sync,
 			)
 			return (
 				stats.manual > before.manual ||
@@ -232,7 +235,7 @@ export async function sync(browser: WebdriverIO.Browser) {
 	)
 	const result = await browser.executeObsidian(({ plugins }) => ({
 		notices: Array.from(document.querySelectorAll('.notice'), (notice) => notice.textContent),
-		stats: plugins.yanki.settings.stats.sync,
+		stats: plugins.obsidianLiveToAnki.settings.stats.sync,
 	}))
 	// Assert the plugin's outcome: its command callback does not await the sync,
 	// and the plugin catches library errors and surfaces them as Obsidian notices.

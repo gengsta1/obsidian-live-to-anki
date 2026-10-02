@@ -33,6 +33,7 @@ import {
 	Vault,
 } from 'obsidian'
 import { renameFiles, syncFiles } from 'yanki'
+import { syncCurrentMedicalNote, syncMedicalFile } from './medical-sync'
 
 const DRIVE_LETTER_REGEX = /^[A-Z]:/iv
 
@@ -391,6 +392,9 @@ export default class YankiPlugin extends Plugin {
 		// TODO check if this is necessary first
 		await this.saveSettings()
 		this.addSettingTab(this.settingsTab)
+		this.addRibbonIcon('refresh-cw', 'Sync medical Anki blocks', () => {
+			void syncCurrentMedicalNote(this)
+		})
 
 		this.addCommand({
 			callback: () => {
@@ -403,6 +407,14 @@ export default class YankiPlugin extends Plugin {
 			},
 			id: 'sync',
 			name: 'Sync flashcard notes to Anki',
+		})
+
+		this.addCommand({
+			callback: () => {
+				void syncCurrentMedicalNote(this)
+			},
+			id: 'sync-medical-blocks',
+			name: 'Sync current medical Anki blocks to Anki',
 		})
 
 		// Spot any changes since last session
@@ -705,6 +717,14 @@ export default class YankiPlugin extends Plugin {
 	}
 
 	private async handleModify(fileOrFolder: TAbstractFile) {
+		if (
+			this.settings.sync.autoSyncEnabled &&
+			fileOrFolder instanceof TFile &&
+			fileOrFolder.extension === 'md'
+		) {
+			await syncMedicalFile(this, fileOrFolder)
+		}
+
 		if (!this.isInsideWatchedFolders(fileOrFolder)) {
 			return
 		}

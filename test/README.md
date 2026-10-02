@@ -75,7 +75,7 @@ test('registers a command', async ({ desktop: { browser } }) => {
   const commands = await browser.executeObsidian(({ app }) =>
     app.commands.listCommands().map(({ id }) => id),
   )
-  expect(commands).toContain('yanki:sync')
+  expect(commands).toContain('obsidian-live-to-anki:sync')
 })
 ```
 
