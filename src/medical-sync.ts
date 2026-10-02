@@ -8,6 +8,15 @@ import {
 	type ParsedMedicalCardBlock,
 } from './medical-parser'
 
+export type MedicalSyncFileResult = {
+	deckName: null | string
+	filePath: string
+	skipped: number
+	synced: number
+}
+
+const MAIN_NOTES_FOLDER = '6 - Main Notes/'
+
 export async function syncCurrentMedicalNote(plugin: YankiPlugin): Promise<void> {
 	try {
 		const file = plugin.app.workspace.getActiveFile()
@@ -24,18 +33,55 @@ export async function syncCurrentMedicalNote(plugin: YankiPlugin): Promise<void>
 	}
 }
 
+export async function syncMainNotesMedicalAnki(plugin: YankiPlugin): Promise<void> {
+	try {
+		const files = plugin.app.vault
+			.getMarkdownFiles()
+			.filter((file) => file.path.startsWith(MAIN_NOTES_FOLDER))
+
+		let synced = 0
+		let skipped = 0
+		let touchedFiles = 0
+
+		for (const file of files) {
+			const result = await syncMedicalFile(plugin, file)
+			synced += result.synced
+			skipped += result.skipped
+			if (result.synced > 0 || result.skipped > 0) {
+				touchedFiles += 1
+			}
+		}
+
+		new Notice(
+			`Medical Anki sync: ${synced} note${synced === 1 ? '' : 's'} synced from Main Notes${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
+			10_000,
+		)
+
+		console.info('Medical Anki Main Notes sync complete', {
+			filesScanned: files.length,
+			skipped,
+			synced,
+			touchedFiles,
+		})
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		console.error('Medical Anki Main Notes sync failed', error)
+		new Notice(`Medical Anki sync failed: ${message}`, 10_000)
+	}
+}
+
 export async function syncMedicalFile(
 	plugin: YankiPlugin,
 	file: TFile,
 	showSuccessNotice = false,
-): Promise<void> {
+): Promise<MedicalSyncFileResult> {
 	if (file.extension !== 'md') {
-		return
+		return emptyResult(file.path)
 	}
 
 	const markdown = await plugin.app.vault.read(file)
 	if (!/^## Anki\s*$/imu.test(markdown)) {
-		return
+		return emptyResult(file.path)
 	}
 
 	const parsed = parseMedicalAnkiDocument(markdown)
@@ -47,7 +93,7 @@ export async function syncMedicalFile(
 	}
 
 	if (parsed.targetDeck === null || parsed.cards.length === 0) {
-		return
+		return emptyResult(file.path)
 	}
 
 	const client = new MedicalAnkiConnectClient(plugin.settings.ankiConnect)
@@ -100,11 +146,32 @@ export async function syncMedicalFile(
 
 	if (showSuccessNotice || plugin.settings.verboseNotices) {
 		if (synced.length === 0 && skipped === 0) {
-			return
+			return {
+				deckName: parsed.targetDeck,
+				filePath: file.path,
+				skipped,
+				synced: synced.length,
+			}
 		}
 
 		new Notice(
 			`Medical Anki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced to ${parsed.targetDeck}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
 		)
+	}
+
+	return {
+		deckName: parsed.targetDeck,
+		filePath: file.path,
+		skipped,
+		synced: synced.length,
+	}
+}
+
+function emptyResult(filePath: string): MedicalSyncFileResult {
+	return {
+		deckName: null,
+		filePath,
+		skipped: 0,
+		synced: 0,
 	}
 }

@@ -33,7 +33,7 @@ import {
 	Vault,
 } from 'obsidian'
 import { renameFiles, syncFiles } from 'yanki'
-import { syncCurrentMedicalNote, syncMedicalFile } from './medical-sync'
+import { syncCurrentMedicalNote, syncMainNotesMedicalAnki, syncMedicalFile } from './medical-sync'
 
 const DRIVE_LETTER_REGEX = /^[A-Z]:/iv
 
@@ -392,8 +392,8 @@ export default class YankiPlugin extends Plugin {
 		// TODO check if this is necessary first
 		await this.saveSettings()
 		this.addSettingTab(this.settingsTab)
-		this.addRibbonIcon('refresh-cw', 'Sync medical Anki blocks', () => {
-			void syncCurrentMedicalNote(this)
+		this.addRibbonIcon('refresh-cw', 'Sync Main Notes medical Anki blocks', () => {
+			void syncMainNotesMedicalAnki(this)
 		})
 
 		this.addCommand({
@@ -415,6 +415,14 @@ export default class YankiPlugin extends Plugin {
 			},
 			id: 'sync-medical-blocks',
 			name: 'Sync current medical Anki blocks to Anki',
+		})
+
+		this.addCommand({
+			callback: () => {
+				void syncMainNotesMedicalAnki(this)
+			},
+			id: 'sync-main-notes-medical-blocks',
+			name: 'Sync Main Notes medical Anki blocks to Anki',
 		})
 
 		// Spot any changes since last session
