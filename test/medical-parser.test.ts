@@ -56,4 +56,24 @@ describe('medical Anki parser', () => {
 		const updated = insertSyncedNoteIds(sample, [{ card: card!, noteId: '1741234567890' }])
 		expect(updated).toContain('END\n<!--ANKI-NOTE-ID: 1741234567890-->')
 	})
+
+	test('normalizes common Cloze_obsidian model and field aliases', () => {
+		const parsed = parseMedicalAnkiDocument(`## Anki
+TARGET DECK: Medicine::Diagnoses::Example
+
+START
+Cloze
+Text: {{c1::answer::hint}}
+Definitions: English field label
+Mechanism: English mechanism
+Dose: English dose
+END
+`)
+
+		expect(parsed.errors).toEqual([])
+		expect(parsed.cards[0]?.modelName).toBe('Cloze_obsidian')
+		expect(parsed.cards[0]?.fields.Definitionen).toBe('English field label')
+		expect(parsed.cards[0]?.fields.Mechanismus).toBe('English mechanism')
+		expect(parsed.cards[0]?.fields.Dosis).toBe('English dose')
+	})
 })

@@ -41,6 +41,27 @@ export const CLOZE_OBSIDIAN_FIELDS = [
 	'One by one',
 ]
 
+const FIELD_ALIASES: Record<string, string> = {
+	'back extra': 'Back Extra',
+	clinic: 'Klinik',
+	definition: 'Definitionen',
+	definitionen: 'Definitionen',
+	definitions: 'Definitionen',
+	dose: 'Dosis',
+	dosage: 'Dosis',
+	dosis: 'Dosis',
+	'eigene prüfungsfragen': 'Eigene Prüfungsfragen',
+	'exam questions': 'Eigene Prüfungsfragen',
+	klinik: 'Klinik',
+	mechanism: 'Mechanismus',
+	mechanismus: 'Mechanismus',
+	mnemonics: 'Merksprüche',
+	merksprüche: 'Merksprüche',
+	'one by one': 'One by one',
+	questions: 'Eigene Prüfungsfragen',
+	text: 'Text',
+}
+
 export function parseMedicalAnkiDocument(markdown: string): ParsedMedicalAnkiDocument {
 	const header = ANKI_HEADER_RE.exec(markdown)
 	if (header === null) {
@@ -122,7 +143,7 @@ function parseCardInner(
 ): { card: ParsedMedicalCardBlock; errors: string[] } {
 	const normalized = inner.replaceAll('\r\n', '\n')
 	const firstLineMatch = /^([^\n]+)\n?/u.exec(normalized)
-	const modelName = firstLineMatch?.[1]?.trim() ?? ''
+	const modelName = normalizeModelName(firstLineMatch?.[1]?.trim() ?? '')
 	const body = normalized.slice(firstLineMatch?.[0]?.length ?? 0)
 	const errors: string[] = []
 
@@ -162,7 +183,7 @@ function parseFields(body: string): Record<string, string> {
 	for (const match of body.matchAll(FIELD_RE)) {
 		const lineStart = match.index ?? 0
 		const full = match[0]
-		const name = (match[1] ?? '').trim()
+		const name = normalizeFieldName((match[1] ?? '').trim())
 		if (name.length === 0) {
 			continue
 		}
@@ -181,4 +202,17 @@ function parseFields(body: string): Record<string, string> {
 	}
 
 	return fields
+}
+
+function normalizeFieldName(fieldName: string): string {
+	const normalized = fieldName.toLowerCase().replaceAll(/\s+/gu, ' ').trim()
+	return FIELD_ALIASES[normalized] ?? fieldName
+}
+
+function normalizeModelName(modelName: string): string {
+	if (modelName.toLowerCase().trim() === 'cloze') {
+		return 'Cloze_obsidian'
+	}
+
+	return modelName
 }
