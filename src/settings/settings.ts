@@ -52,6 +52,14 @@ export type YankiPluginSettings = {
 		maxLength: number
 		mode: 'prompt' | 'response'
 	}
+	medicalAnki: {
+		defaultModelName: string
+		fieldAliases: string
+		fields: string
+		folders: string[]
+		modelAliases: string
+		textFieldName: string
+	}
 	namespace: string
 	showAdvancedSettings: boolean
 	stats: {
@@ -99,6 +107,38 @@ export function getYankiPluginDefaultSettings(app: App): YankiPluginSettings {
 			autoRenameTrigger: 'off',
 			maxLength: 60,
 			mode: 'prompt',
+		},
+		medicalAnki: {
+			defaultModelName: 'Cloze_obsidian',
+			fieldAliases: [
+				'Text=Text',
+				'Back Extra=Back Extra',
+				'Definitions=Definitionen',
+				'Definition=Definitionen',
+				'Mechanism=Mechanismus',
+				'Clinic=Klinik',
+				'Dose=Dosis',
+				'Dosage=Dosis',
+				'Cave=Cave',
+				'Mnemonics=Merksprüche',
+				'Questions=Eigene Prüfungsfragen',
+				'One by one=One by one',
+			].join('\n'),
+			fields: [
+				'Text',
+				'Back Extra',
+				'Definitionen',
+				'Mechanismus',
+				'Klinik',
+				'Dosis',
+				'Cave',
+				'Merksprüche',
+				'Eigene Prüfungsfragen',
+				'One by one',
+			].join('\n'),
+			folders: ['6 - Main Notes'],
+			modelAliases: ['Cloze=Cloze_obsidian'].join('\n'),
+			textFieldName: 'Text',
 		},
 		// Defaults to vault ID the first time Yanki is run on a vault, but it may NOT be the actual current vault ID, e.g. when syncing is involved
 		// Using vault ID instead of name is more robust to vault renaming
@@ -197,6 +237,8 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 	private getSettingGroups(): YankiSettingGroup[] {
 		const advancedVisible = () => this.plugin.settings.showAdvancedSettings
 		const folders = this.plugin.settings.folders.length === 0 ? [''] : this.plugin.settings.folders
+		const medicalFolders =
+			this.plugin.settings.medicalAnki.folders.length === 0 ? [''] : this.plugin.settings.medicalAnki.folders
 		const { latestSyncTime } = this.plugin.settings.stats.sync
 		const syncTime = latestSyncTime === undefined ? 'Never' : moment.unix(latestSyncTime).fromNow()
 		const { auto, duration, errors, invalid, manual } = this.plugin.settings.stats.sync
@@ -314,7 +356,190 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 			},
 		)
 
+		const medicalFolderItems: YankiSettingDefinition[] = [
+			{
+				desc: sanitizeHTMLToDom(
+					html`These folders are scanned by the <strong>Sync all Main Notes to Anki</strong>
+						button. Notes without a <code>## Anki</code> section are ignored.`,
+				),
+				name: '',
+				render(setting) {
+					setting.setClass('section-description')
+				},
+				searchable: false,
+			},
+		]
+
+		for (const index of medicalFolders.keys()) {
+			medicalFolderItems.push({
+				name: `Block sync folder ${String(index + 1)}`,
+				render: (setting) => {
+					if (this.plugin.settings.medicalAnki.folders.length === 0) {
+						this.plugin.settings.medicalAnki.folders.push('')
+					}
+
+					setting
+						.addSearch((search) => {
+							new FolderSuggest(search.inputEl, this.app)
+							search
+								.setPlaceholder('Select a folder')
+								.setValue(this.plugin.settings.medicalAnki.folders[index] ?? '')
+								.onChange((value) => {
+									this.plugin.settings.medicalAnki.folders[index] = value
+								})
+
+							search.inputEl.addEventListener('blur', () => {
+								void this.plugin.saveSettings()
+							})
+						})
+						.setClass('folder-setting')
+
+					setting.infoEl.remove()
+
+					if (index > 0) {
+						setting.addExtraButton((button) => {
+							button
+								.setIcon('cross')
+								.setTooltip('Delete')
+								.onClick(async () => {
+									this.plugin.settings.medicalAnki.folders.splice(index, 1)
+									await this.plugin.saveSettings()
+									this.render()
+								})
+						})
+					}
+				},
+			})
+		}
+
+		medicalFolderItems.push(
+			{
+				desc: 'Add another source folder for embedded Anki blocks.',
+				name: 'Add block sync folder',
+				render: (setting) => {
+					setting
+						.setName('')
+						.addButton((button) => {
+							button.setButtonText('Add folder').onClick(async () => {
+								this.plugin.settings.medicalAnki.folders.push('')
+								await this.plugin.saveSettings()
+								this.render()
+							})
+						})
+						.setClass('description-is-button-annotation')
+				},
+			},
+			{
+				desc: 'The Anki note type used when a block starts with an alias like “Cloze”.',
+				name: 'Default note type',
+				render: (setting) => {
+					setting.addText((text) => {
+						text
+							.setPlaceholder('Cloze_obsidian')
+							.setValue(this.plugin.settings.medicalAnki.defaultModelName)
+							.onChange((value) => {
+								this.plugin.settings.medicalAnki.defaultModelName = value.trim()
+							})
+						text.inputEl.addEventListener('blur', () => {
+							void this.plugin.saveSettings()
+						})
+					})
+				},
+			},
+			{
+				desc: 'One field per line, in the exact order/name Anki uses for this note type.',
+				name: 'Fields',
+				render: (setting) => {
+					setting.addTextArea((text) => {
+						text
+							.setPlaceholder('Text\nBack Extra')
+							.setValue(this.plugin.settings.medicalAnki.fields)
+							.onChange((value) => {
+								this.plugin.settings.medicalAnki.fields = value
+							})
+						text.inputEl.rows = 8
+						text.inputEl.addEventListener('blur', () => {
+							void this.plugin.saveSettings()
+						})
+					})
+				},
+			},
+			{
+				desc: 'The field that must contain the cloze text.',
+				name: 'Text field',
+				render: (setting) => {
+					setting.addText((text) => {
+						text
+							.setPlaceholder('Text')
+							.setValue(this.plugin.settings.medicalAnki.textFieldName)
+							.onChange((value) => {
+								this.plugin.settings.medicalAnki.textFieldName = value.trim()
+							})
+						text.inputEl.addEventListener('blur', () => {
+							void this.plugin.saveSettings()
+						})
+					})
+				},
+			},
+			{
+				desc: 'Aliases are written as “Short name=Real Anki name”, one per line.',
+				name: 'Note type aliases',
+				render: (setting) => {
+					setting.addTextArea((text) => {
+						text
+							.setPlaceholder('Cloze=Cloze_obsidian')
+							.setValue(this.plugin.settings.medicalAnki.modelAliases)
+							.onChange((value) => {
+								this.plugin.settings.medicalAnki.modelAliases = value
+							})
+						text.inputEl.rows = 4
+						text.inputEl.addEventListener('blur', () => {
+							void this.plugin.saveSettings()
+						})
+					})
+				},
+			},
+			{
+				desc: 'Field aliases are also “Input name=Real Anki field name”, one per line.',
+				name: 'Field aliases',
+				render: (setting) => {
+					setting.addTextArea((text) => {
+						text
+							.setPlaceholder('Definitions=Definitionen')
+							.setValue(this.plugin.settings.medicalAnki.fieldAliases)
+							.onChange((value) => {
+								this.plugin.settings.medicalAnki.fieldAliases = value
+							})
+						text.inputEl.rows = 8
+						text.inputEl.addEventListener('blur', () => {
+							void this.plugin.saveSettings()
+						})
+					})
+				},
+			},
+			{
+				desc: sanitizeHTMLToDom(
+					html`Copy-paste format:<br /><code>## Anki</code><br /><code>TARGET DECK:
+						YourDeck::Subdeck</code><br /><code>FILE TAGS: optional tags</code><br /><br /><code
+							>START</code
+						><br /><code>Cloze</code><br /><code
+							>Text: Your {{c1::answer::hint}} with **bold** text.</code
+						><br /><code>Back Extra:</code><br /><code>Tags: optional</code><br /><code>END</code>`,
+				),
+				name: 'Card block format',
+				render(setting) {
+					setting.setClass('section-description')
+				},
+				searchable: false,
+			},
+		)
+
 		return [
+			{
+				heading: 'Live Anki blocks',
+				items: medicalFolderItems,
+				type: 'group',
+			},
 			{
 				heading: 'Anki flashcard folders',
 				items: folderItems,

@@ -16,6 +16,14 @@ export type ParsedMedicalCardBlock = {
 	tags: string[]
 }
 
+export type MedicalParserOptions = {
+	defaultModelName: string
+	fieldAliases: Record<string, string>
+	fields: string[]
+	modelAliases: Record<string, string>
+	textFieldName: string
+}
+
 type FieldSpan = {
 	lineStart: number
 	name: string
@@ -41,7 +49,36 @@ export const CLOZE_OBSIDIAN_FIELDS = [
 	'One by one',
 ]
 
-const FIELD_ALIASES: Record<string, string> = {
+export const DEFAULT_MEDICAL_PARSER_OPTIONS: MedicalParserOptions = {
+	defaultModelName: 'Cloze_obsidian',
+	fieldAliases: {
+		'back extra': 'Back Extra',
+		clinic: 'Klinik',
+		definition: 'Definitionen',
+		definitionen: 'Definitionen',
+		definitions: 'Definitionen',
+		dose: 'Dosis',
+		dosage: 'Dosis',
+		dosis: 'Dosis',
+		'eigene prüfungsfragen': 'Eigene Prüfungsfragen',
+		'exam questions': 'Eigene Prüfungsfragen',
+		klinik: 'Klinik',
+		mechanism: 'Mechanismus',
+		mechanismus: 'Mechanismus',
+		mnemonics: 'Merksprüche',
+		merksprüche: 'Merksprüche',
+		'one by one': 'One by one',
+		questions: 'Eigene Prüfungsfragen',
+		text: 'Text',
+	},
+	fields: CLOZE_OBSIDIAN_FIELDS,
+	modelAliases: {
+		cloze: 'Cloze_obsidian',
+	},
+	textFieldName: 'Text',
+}
+
+export const FIELD_ALIASES: Record<string, string> = {
 	'back extra': 'Back Extra',
 	clinic: 'Klinik',
 	definition: 'Definitionen',
@@ -62,7 +99,10 @@ const FIELD_ALIASES: Record<string, string> = {
 	text: 'Text',
 }
 
-export function parseMedicalAnkiDocument(markdown: string): ParsedMedicalAnkiDocument {
+export function parseMedicalAnkiDocument(
+	markdown: string,
+	options: MedicalParserOptions = DEFAULT_MEDICAL_PARSER_OPTIONS,
+): ParsedMedicalAnkiDocument {
 	const header = ANKI_HEADER_RE.exec(markdown)
 	if (header === null) {
 		return {
@@ -90,7 +130,7 @@ export function parseMedicalAnkiDocument(markdown: string): ParsedMedicalAnkiDoc
 		const noteId = match[2]?.trim() ?? null
 		const startOffset = header.index + (match.index ?? 0)
 		const endOffset = startOffset + raw.length
-		const parsed = parseCardInner(inner, raw, noteId, startOffset, endOffset)
+		const parsed = parseCardInner(inner, raw, noteId, startOffset, endOffset, options)
 		cards.push(parsed.card)
 		errors.push(...parsed.errors)
 	}
@@ -140,10 +180,11 @@ function parseCardInner(
 	noteId: null | string,
 	startOffset: number,
 	endOffset: number,
+	options: MedicalParserOptions,
 ): { card: ParsedMedicalCardBlock; errors: string[] } {
 	const normalized = inner.replaceAll('\r\n', '\n')
 	const firstLineMatch = /^([^\n]+)\n?/u.exec(normalized)
-	const modelName = normalizeModelName(firstLineMatch?.[1]?.trim() ?? '')
+	const modelName = normalizeModelName(firstLineMatch?.[1]?.trim() ?? '', options)
 	const body = normalized.slice(firstLineMatch?.[0]?.length ?? 0)
 	const errors: string[] = []
 
@@ -151,14 +192,14 @@ function parseCardInner(
 		errors.push('Ein START/END-Block hat keinen Notiztyp in der ersten Zeile.')
 	}
 
-	const fields = parseFields(body)
-	for (const field of CLOZE_OBSIDIAN_FIELDS) {
+	const fields = parseFields(body, options)
+	for (const field of options.fields) {
 		fields[field] ??= ''
 	}
 
-	const text = fields.Text?.trim() ?? ''
+	const text = fields[options.textFieldName]?.trim() ?? ''
 	if (text.length === 0) {
-		errors.push(`Kartenblock '${modelName || 'unbekannt'}' hat kein Feld 'Text'.`)
+		errors.push(`Kartenblock '${modelName || 'unbekannt'}' hat kein Feld '${options.textFieldName}'.`)
 	}
 
 	const tags = splitTags(fields.Tags ?? '')
@@ -178,12 +219,12 @@ function parseCardInner(
 	}
 }
 
-function parseFields(body: string): Record<string, string> {
+function parseFields(body: string, options: MedicalParserOptions): Record<string, string> {
 	const spans: FieldSpan[] = []
 	for (const match of body.matchAll(FIELD_RE)) {
 		const lineStart = match.index ?? 0
 		const full = match[0]
-		const name = normalizeFieldName((match[1] ?? '').trim())
+		const name = normalizeFieldName((match[1] ?? '').trim(), options)
 		if (name.length === 0) {
 			continue
 		}
@@ -204,15 +245,12 @@ function parseFields(body: string): Record<string, string> {
 	return fields
 }
 
-function normalizeFieldName(fieldName: string): string {
+function normalizeFieldName(fieldName: string, options: MedicalParserOptions): string {
 	const normalized = fieldName.toLowerCase().replaceAll(/\s+/gu, ' ').trim()
-	return FIELD_ALIASES[normalized] ?? fieldName
+	return options.fieldAliases[normalized] ?? fieldName
 }
 
-function normalizeModelName(modelName: string): string {
-	if (modelName.toLowerCase().trim() === 'cloze') {
-		return 'Cloze_obsidian'
-	}
-
-	return modelName
+function normalizeModelName(modelName: string, options: MedicalParserOptions): string {
+	const normalized = modelName.toLowerCase().replaceAll(/\s+/gu, ' ').trim()
+	return options.modelAliases[normalized] ?? modelName
 }

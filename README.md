@@ -53,27 +53,30 @@ The important differences:
 - **Decks come from `TARGET DECK`.** The new sync command does not derive the deck from the Obsidian folder path.
 - **Tags are merged.** `FILE TAGS` are combined with each card's own `Tags` field.
 - **Stable updates.** New cards get `<!--ANKI-NOTE-ID: ...-->` after `END`, so later syncs update the same Anki note instead of creating duplicates.
-- **Custom note type support.** The medical workflow is designed around `Cloze_obsidian` and its fields: `Text`, `Back Extra`, `Definitionen`, `Mechanismus`, `Klinik`, `Dosis`, `Cave`, `Merksprüche`, `Eigene Prüfungsfragen`, and `One by one`.
+- **Configurable note type support.** The default setup works with `Cloze_obsidian` and its fields, but the source folders, note type, field list, text field, note type aliases, and field aliases can be changed in the plugin settings.
+- **Two block-sync commands.** Sync only the current note, or sync every note in the configured block-sync folders.
+- **Basic inline Markdown.** `**bold text**` in block fields is sent to Anki as bold HTML.
 - **No automatic deletion yet.** Version 0.1 only creates and updates Anki notes. Removing Anki cards automatically from deleted blocks should be added later, after the create/update path is stable.
 
 The original Yanki folder-sync command is still present for reference. The fork-specific command is:
 
 ```text
-Obsidian Live to Anki: Sync current medical Anki blocks to Anki
+Obsidian Live to Anki: Sync this note medical Anki blocks to Anki
+Obsidian Live to Anki: Sync all Main Notes medical Anki blocks to Anki
 ```
 
-## Medical block format
+## Live Anki block format
 
-This local fork adds a medical block sync command for embedded cards inside a larger Obsidian master note:
+This fork adds block sync commands for embedded cards inside larger Obsidian notes:
 
 ```text
 ## Anki
-TARGET DECK: Medicine::Diagnoses::Example
-FILE TAGS: medicine example
+TARGET DECK: Study::Topic::Example
+FILE TAGS: study example
 
 START
-Cloze_obsidian
-Text: ...
+Cloze
+Text: A card can contain {{c1::cloze deletions::hint}} and **bold text**.
 Back Extra: ...
 Definitionen:
 Mechanismus:
@@ -87,10 +90,23 @@ Tags: diagnosis
 END
 ```
 
-Run `Obsidian Live to Anki: Sync current medical Anki blocks to Anki`.
+Run `Obsidian Live to Anki: Sync this note medical Anki blocks to Anki` for the active note, or `Obsidian Live to Anki: Sync all Main Notes medical Anki blocks to Anki` for all configured block-sync folders.
 New cards get a stable `<!--ANKI-NOTE-ID: ...-->` comment after `END`, so later syncs update the same Anki note instead of creating duplicates.
 
-The original Yanki folder-sync command is still present for reference, but the new medical workflow uses `TARGET DECK` directly instead of deriving decks from folders.
+The original Yanki folder-sync command is still present for reference, but the new block workflow uses `TARGET DECK` directly instead of deriving decks from folders.
+
+## Configurable block settings
+
+Open the plugin settings and use the **Live Anki blocks** section to customize the workflow:
+
+- **Block sync folders**: folders scanned by the all-notes command.
+- **Default note type**: the real Anki note type used for shorthand aliases.
+- **Fields**: one Anki field per line.
+- **Text field**: the field that must contain the cloze text.
+- **Note type aliases**: mappings like `Cloze=Cloze_obsidian`.
+- **Field aliases**: mappings like `Definitions=Definitionen`.
+
+This makes the workflow usable outside medicine: rename fields, change the note type, and point the all-notes button at any folder.
 
 ## Upstream Yanki documentation
 

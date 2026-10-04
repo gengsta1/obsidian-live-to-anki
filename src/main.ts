@@ -347,7 +347,40 @@ export default class YankiPlugin extends Plugin {
 	async loadSettings() {
 		// Merge any saved settings into defaults
 		// TODO detect change and return boolean to skip subsequent writes?
-		this.settings = { ...this.settings, ...(await this.loadData()) }
+		const savedSettings = await this.loadData()
+		const defaultSettings = getYankiPluginDefaultSettings(this.app)
+		this.settings = {
+			...defaultSettings,
+			...savedSettings,
+			ankiConnect: {
+				...defaultSettings.ankiConnect,
+				...savedSettings?.ankiConnect,
+			},
+			manageFilenames: {
+				...defaultSettings.manageFilenames,
+				...savedSettings?.manageFilenames,
+			},
+			medicalAnki: {
+				...defaultSettings.medicalAnki,
+				...savedSettings?.medicalAnki,
+			},
+			stats: {
+				...defaultSettings.stats,
+				...savedSettings?.stats,
+				sync: {
+					...defaultSettings.stats.sync,
+					...savedSettings?.stats?.sync,
+					notes: {
+						...defaultSettings.stats.sync.notes,
+						...savedSettings?.stats?.sync?.notes,
+					},
+				},
+			},
+			sync: {
+				...defaultSettings.sync,
+				...savedSettings?.sync,
+			},
+		}
 	}
 
 	// This never seems to fire, even after manually editing the settings file?
