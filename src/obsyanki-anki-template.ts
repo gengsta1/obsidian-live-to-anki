@@ -81,14 +81,14 @@ export const OBSYANKI_FRONT_TEMPLATE = String.raw`<div id="obsidian-card" class=
 })();
 </script>`
 
-export const OBSYANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
+export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="card-shell" style="visibility:hidden;">
     <div id="text" class="main-text">
         {{cloze:Text}}
     </div>
 
     <div id="onebyone-controls" class="onebyone-controls" style="display:none;">
         <button class="reveal-button" onclick="revealNextCloze(); event.stopPropagation();">
-            Next point <span class="shortcut">N</span>
+            Next point <span class="shortcut">Space / N</span>
         </button>
         <button class="reveal-button secondary" onclick="revealAllClozes(); event.stopPropagation();">
             Show all
@@ -228,10 +228,16 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
     const oneByOneSetting = ` + '`{{text:One by one}}`' + String.raw`.trim().toLowerCase();
 
     const textContainer = document.getElementById("text");
+    const card = document.getElementById("obsidian-card");
     const controls = document.getElementById("onebyone-controls");
     const afterAnswer = document.getElementById("after-answer");
+    let oneByOneActive = false;
+    let pendingClozeCount = 0;
 
     if (!textContainer) {
+        if (card) {
+            card.style.visibility = "visible";
+        }
         return;
     }
 
@@ -286,6 +292,8 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
         });
 
         let nextIndex = 0;
+        oneByOneActive = true;
+        pendingClozeCount = clozes.length;
 
         clozes.forEach(function (cloze) {
             cloze.innerHTML = "[...]";
@@ -308,6 +316,7 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
             clozes[nextIndex].innerHTML = answers[nextIndex];
             clozes[nextIndex].classList.remove("cloze-pending");
             nextIndex += 1;
+            pendingClozeCount = clozes.length - nextIndex;
 
             if (nextIndex >= clozes.length) {
                 if (controls) {
@@ -327,6 +336,7 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
             });
 
             nextIndex = clozes.length;
+            pendingClozeCount = 0;
 
             if (controls) {
                 controls.style.display = "none";
@@ -348,26 +358,38 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
 
     initOneByOne();
 
+    if (card) {
+        card.style.visibility = "visible";
+    }
+
     document.addEventListener(
         "keydown",
         function (event) {
             const key = event.key.toLowerCase();
+            const hasPlainModifier = !event.ctrlKey && !event.altKey && !event.metaKey;
 
-            if (key === "n" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+            if ((key === " " || key === "spacebar") && hasPlainModifier && oneByOneActive && pendingClozeCount > 0) {
                 event.preventDefault();
                 event.stopPropagation();
                 window.revealNextCloze();
                 return;
             }
 
-            if (key === "," && !event.ctrlKey && !event.altKey && !event.metaKey) {
+            if (key === "n" && hasPlainModifier) {
+                event.preventDefault();
+                event.stopPropagation();
+                window.revealNextCloze();
+                return;
+            }
+
+            if (key === "," && hasPlainModifier) {
                 event.preventDefault();
                 event.stopPropagation();
                 window.revealAllClozes();
                 return;
             }
 
-            if (key === "x" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+            if (key === "x" && hasPlainModifier) {
                 event.preventDefault();
                 event.stopPropagation();
                 window.showNextExtraPanel();
