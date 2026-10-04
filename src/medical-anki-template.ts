@@ -8,8 +8,44 @@ export const MEDICAL_ANKI_FRONT_TEMPLATE = String.raw`<div id="obsidian-card" cl
 
 <script>
 (function () {
+    function renderBoldMarkdown(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+
+        while (walker.nextNode()) {
+            nodes.push(walker.currentNode);
+        }
+
+        nodes.forEach(function (node) {
+            const text = node.nodeValue || "";
+            if (!text.includes("**")) {
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+            parts.forEach(function (part) {
+                if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+                    const strong = document.createElement("strong");
+                    strong.textContent = part.slice(2, -2);
+                    fragment.appendChild(strong);
+                } else if (part.length > 0) {
+                    fragment.appendChild(document.createTextNode(part));
+                }
+            });
+
+            node.parentNode.replaceChild(fragment, node);
+        });
+    }
+
     const disabledValues = ["off", "false", "0", "nein", "normal"];
     const setting = ` + '`{{text:One by one}}`' + String.raw`.trim().toLowerCase();
+
+    const textContainer = document.getElementById("text");
+    if (textContainer) {
+        renderBoldMarkdown(textContainer);
+    }
 
     if (disabledValues.includes(setting)) {
         return;
@@ -157,6 +193,37 @@ export const MEDICAL_ANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
 
 <script>
 (function () {
+    function renderBoldMarkdown(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+
+        while (walker.nextNode()) {
+            nodes.push(walker.currentNode);
+        }
+
+        nodes.forEach(function (node) {
+            const text = node.nodeValue || "";
+            if (!text.includes("**")) {
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+            parts.forEach(function (part) {
+                if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+                    const strong = document.createElement("strong");
+                    strong.textContent = part.slice(2, -2);
+                    fragment.appendChild(strong);
+                } else if (part.length > 0) {
+                    fragment.appendChild(document.createTextNode(part));
+                }
+            });
+
+            node.parentNode.replaceChild(fragment, node);
+        });
+    }
+
     const disabledValues = ["off", "false", "0", "nein", "normal"];
     const oneByOneSetting = ` + '`{{text:One by one}}`' + String.raw`.trim().toLowerCase();
 
@@ -167,6 +234,8 @@ export const MEDICAL_ANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
     if (!textContainer) {
         return;
     }
+
+    renderBoldMarkdown(document.querySelector(".card-shell"));
 
     function getPanels() {
         return Array.from(document.querySelectorAll(".extra-field"));
