@@ -1,6 +1,7 @@
-import type { App, ButtonComponent } from 'obsidian'
-import moment from 'moment'
 import {
+	type App,
+	type ButtonComponent,
+	moment,
 	Notice,
 	PluginSettingTab,
 	requireApiVersion,
@@ -404,7 +405,7 @@ export class SynkiPluginSettingTab extends PluginSettingTab {
 		const synkiFolderItems: SynkiSettingDefinition[] = [
 			{
 				desc: sanitizeHTMLToDom(
-					html`These folders are scanned by the <strong>Sync all Synki folders to Anki</strong>
+					html`These folders are scanned by the <strong>Sync all block folders to Anki</strong>
 						button. Notes without a <code>## Anki</code> section are ignored.`,
 				),
 				name: '',

@@ -44,8 +44,8 @@ The important differences:
 The original Yanki folder-sync command is still present for reference. The fork-specific command is:
 
 ```text
-Synki: Sync this note with Synki
-Synki: Sync all Synki folders to Anki
+Synki: Sync this note
+Synki: Sync all block folders to Anki
 ```
 
 ## Live Anki block format
@@ -73,7 +73,7 @@ Tags: diagnosis
 END
 ```
 
-Run `Synki: Sync this note with Synki` for the active note, or `Synki: Sync all Synki folders to Anki` for all configured block-sync folders.
+Run `Synki: Sync this note` for the active note, or `Synki: Sync all block folders to Anki` for all configured block-sync folders.
 New cards get a stable `<!--ANKI-NOTE-ID: ...-->` comment after `END`, so later syncs update the same Anki note instead of creating duplicates.
 
 The original Yanki folder-sync command is still present for reference, but the new block workflow uses `TARGET DECK` directly instead of deriving decks from folders.

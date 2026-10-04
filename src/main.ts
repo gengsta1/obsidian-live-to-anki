@@ -449,16 +449,16 @@ export default class SynkiPlugin extends Plugin {
 			callback: () => {
 				void syncCurrentSynkiNote(this)
 			},
-			id: 'sync-synki-blocks',
-			name: 'Sync this note with Synki',
+			id: 'sync-blocks',
+			name: 'Sync this note',
 		})
 
 		this.addCommand({
 			callback: () => {
 				void syncMainNotesSynki(this)
 			},
-			id: 'sync-main-notes-synki-blocks',
-			name: 'Sync all Synki folders to Anki',
+			id: 'sync-block-folders',
+			name: 'Sync all block folders to Anki',
 		})
 
 		// Spot any changes since last session

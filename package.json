@@ -1,7 +1,7 @@
 {
 	"name": "synki",
-	"version": "0.1.1",
-	"description": "An Obsidian plugin that syncs embedded Synki blocks from Obsidian notes to Anki.",
+	"version": "0.1.2",
+	"description": "Sync embedded Synki flashcard blocks to Anki.",
 	"keywords": [
 		"obsidian",
 		"obsidian-md",
@@ -87,7 +87,7 @@
 	},
 	"obsidian": {
 		"author": "gengsta1, based on Yanki by Kitschpatrol",
-		"description": "Sync embedded Synki blocks from Obsidian notes to Anki.",
+		"description": "Sync embedded Synki flashcard blocks to Anki.",
 		"id": "synki",
 		"isDesktopOnly": true,
 		"minAppVersion": "1.9.12",

@@ -58,12 +58,6 @@ export async function syncMainNotesSynki(plugin: SynkiPlugin): Promise<void> {
 			10_000,
 		)
 
-		console.info('Synki Main Notes sync complete', {
-			filesScanned: files.length,
-			skipped,
-			synced,
-			touchedFiles,
-		})
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		console.error('Synki Main Notes sync failed', error)

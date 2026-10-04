@@ -15,8 +15,8 @@ test('loads the release bundle and reports an unconfigured sync in Obsidian', as
 		),
 	).toEqual([
 		'synki:sync',
-		'synki:sync-synki-blocks',
-		'synki:sync-main-notes-synki-blocks',
+		'synki:sync-blocks',
+		'synki:sync-block-folders',
 	])
 	await browser.executeObsidianCommand('synki:sync')
 	await expect
