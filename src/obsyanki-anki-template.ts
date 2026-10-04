@@ -231,6 +231,8 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
     const card = document.getElementById("obsidian-card");
     const controls = document.getElementById("onebyone-controls");
     const afterAnswer = document.getElementById("after-answer");
+    let oneByOneEnabled = false;
+    let lastExtraShortcutAt = 0;
 
     if (!textContainer) {
         if (card) {
@@ -242,12 +244,25 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
     renderBoldMarkdown(document.querySelector(".card-shell"));
 
     function getPanels() {
-        return Array.from(document.querySelectorAll(".extra-field"));
+        return Array.from(document.querySelectorAll(".field-button[data-panel]"))
+            .map(function (button) {
+                return document.getElementById(button.getAttribute("data-panel"));
+            })
+            .filter(function (panel) {
+                return panel !== null;
+            });
     }
 
     function getVisiblePanels() {
         return getPanels().filter(function (panel) {
             return panel.classList.contains("field-visible");
+        });
+    }
+
+    function syncPanelButtons() {
+        Array.from(document.querySelectorAll(".field-button[data-panel]")).forEach(function (button) {
+            const panel = document.getElementById(button.getAttribute("data-panel"));
+            button.classList.toggle("field-button-active", Boolean(panel && panel.classList.contains("field-visible")));
         });
     }
 
@@ -258,12 +273,13 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
         }
 
         field.classList.toggle("field-visible");
+        syncPanelButtons();
     };
 
     window.showNextExtraPanel = function () {
         const panels = getPanels();
         if (panels.length === 0) {
-            return;
+            return false;
         }
 
         const visiblePanels = getVisiblePanels();
@@ -271,10 +287,13 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
             panels.forEach(function (panel) {
                 panel.classList.remove("field-visible");
             });
-            return;
+            syncPanelButtons();
+            return true;
         }
 
         panels[visiblePanels.length].classList.add("field-visible");
+        syncPanelButtons();
+        return true;
     };
 
     function initOneByOne() {
@@ -284,6 +303,8 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
         if (!enabled) {
             return;
         }
+
+        oneByOneEnabled = true;
 
         const answers = clozes.map(function (cloze) {
             return cloze.innerHTML;
@@ -356,34 +377,44 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
         card.style.visibility = "visible";
     }
 
-    window.addEventListener(
-        "keydown",
-        function (event) {
-            const key = event.key.toLowerCase();
-            const hasPlainModifier = !event.ctrlKey && !event.altKey && !event.metaKey;
+    function handleReviewShortcut(event) {
+        const key = event.key.toLowerCase();
+        const hasPlainModifier = !event.ctrlKey && !event.altKey && !event.metaKey;
+        const isExtraShortcut = hasPlainModifier && (key === "x" || event.code === "KeyX");
 
-            if (key === "n" && hasPlainModifier) {
+        if (isExtraShortcut) {
+            const now = Date.now();
+            if (now - lastExtraShortcutAt < 120) {
                 event.preventDefault();
                 event.stopPropagation();
-                window.revealNextCloze();
                 return;
             }
 
-            if (key === "," && hasPlainModifier) {
+            if (window.showNextExtraPanel()) {
+                lastExtraShortcutAt = now;
                 event.preventDefault();
                 event.stopPropagation();
-                window.revealAllClozes();
                 return;
             }
+        }
 
-            if (key === "x" && hasPlainModifier) {
-                event.preventDefault();
-                event.stopPropagation();
-                window.showNextExtraPanel();
-            }
-        },
-        true
-    );
+        if (key === "n" && hasPlainModifier && oneByOneEnabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.revealNextCloze();
+            return;
+        }
+
+        if (key === "," && hasPlainModifier && oneByOneEnabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.revealAllClozes();
+        }
+    }
+
+    window.addEventListener("keydown", handleReviewShortcut, true);
+    document.addEventListener("keydown", handleReviewShortcut, true);
+    document.addEventListener("keyup", handleReviewShortcut, true);
 })();
 </script>`
 
@@ -525,6 +556,10 @@ strong {
 
 .reveal-button:hover,
 .field-button:hover {
+    background: var(--button-hover);
+}
+
+.field-button-active {
     background: var(--button-hover);
 }
 
