@@ -11,6 +11,13 @@ import prettyMilliseconds from 'pretty-ms'
 import { hostAndPortToUrl, urlToHostAndPort } from 'yanki'
 import type YankiPlugin from '../main'
 import { FolderSuggest } from '../extensions/folder-suggest'
+import { MedicalAnkiConnectClient } from '../medical-anki-connect'
+import {
+	MEDICAL_ANKI_BACK_TEMPLATE,
+	MEDICAL_ANKI_FRONT_TEMPLATE,
+	MEDICAL_ANKI_STYLING,
+	MEDICAL_ANKI_TEMPLATE_NAME,
+} from '../medical-anki-template'
 import { capitalize, html, sanitizeNamespace, validateNamespace } from '../utilities'
 
 /**
@@ -531,6 +538,22 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 					setting.setClass('section-description')
 				},
 				searchable: false,
+			},
+			{
+				desc: sanitizeHTMLToDom(
+					html`Updates the configured Anki note type with the built-in card template. This sets
+						the front, back, and styling for one-by-one clozes, <kbd>N</kbd> reveal, and
+						<kbd>X</kbd> extra-field cycling.`,
+				),
+				name: 'Install Anki card template',
+				render: (setting) => {
+					setting.setName('').addButton((button) => {
+						button.setButtonText('Install / update template')
+						button.onClick(() => {
+							void this.installMedicalAnkiTemplate()
+						})
+					})
+				},
 			},
 		)
 
@@ -1059,6 +1082,43 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 
 		this.initialSettings = structuredClone(this.plugin.settings)
 		this.isSettingsOpen = true
+	}
+
+	private async installMedicalAnkiTemplate(): Promise<void> {
+		const modelName = this.plugin.settings.medicalAnki.defaultModelName.trim()
+		if (modelName.length === 0) {
+			new Notice(
+				sanitizeHTMLToDom(html`<strong>Obsidian Live to Anki:</strong><br />Set a note type first.`),
+			)
+			return
+		}
+
+		try {
+			const client = new MedicalAnkiConnectClient(this.plugin.settings.ankiConnect)
+			await client.updateModelTemplate({
+				back: MEDICAL_ANKI_BACK_TEMPLATE,
+				css: MEDICAL_ANKI_STYLING,
+				front: MEDICAL_ANKI_FRONT_TEMPLATE,
+				modelName,
+				templateName: MEDICAL_ANKI_TEMPLATE_NAME,
+			})
+			new Notice(
+				sanitizeHTMLToDom(
+					html`<strong>Obsidian Live to Anki:</strong><br />Updated Anki template for
+						<code>${modelName}</code>.`,
+				),
+			)
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error)
+			console.error('Medical Anki template install failed', error)
+			new Notice(
+				sanitizeHTMLToDom(
+					html`<strong>Obsidian Live to Anki:</strong><br />Template update failed:
+						<code>${message}</code>`,
+				),
+				10_000,
+			)
+		}
 	}
 
 	private updateNotesFoundCount(): void {

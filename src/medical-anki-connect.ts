@@ -13,6 +13,14 @@ export type MedicalAnkiNotePayload = {
 	tags: string[]
 }
 
+export type MedicalAnkiTemplatePayload = {
+	back: string
+	css: string
+	front: string
+	modelName: string
+	templateName: string
+}
+
 type AnkiConnectResponse<T> = {
 	error: null | string
 	result: T
@@ -47,6 +55,27 @@ export class MedicalAnkiConnectClient {
 		const modelFields = await this.invoke<string[]>('modelFieldNames', { modelName })
 		const available = new Set(modelFields)
 		return requiredFields.filter((field) => !available.has(field))
+	}
+
+	public async updateModelTemplate(template: MedicalAnkiTemplatePayload): Promise<void> {
+		await this.invoke('updateModelTemplates', {
+			model: {
+				name: template.modelName,
+				templates: {
+					[template.templateName]: {
+						Back: template.back,
+						Front: template.front,
+					},
+				},
+			},
+		})
+
+		await this.invoke('updateModelStyling', {
+			model: {
+				css: template.css,
+				name: template.modelName,
+			},
+		})
 	}
 
 	public async updateNote(noteId: string, note: MedicalAnkiNotePayload): Promise<void> {
