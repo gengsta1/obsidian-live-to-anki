@@ -9,15 +9,15 @@ import {
 } from 'obsidian'
 import prettyMilliseconds from 'pretty-ms'
 import { hostAndPortToUrl, urlToHostAndPort } from 'yanki'
-import type YankiPlugin from '../main'
+import type ObsyankiPlugin from '../main'
 import { FolderSuggest } from '../extensions/folder-suggest'
-import { MedicalAnkiConnectClient } from '../medical-anki-connect'
+import { ObsyankiConnectClient } from '../obsyanki-anki-connect'
 import {
-	MEDICAL_ANKI_BACK_TEMPLATE,
-	MEDICAL_ANKI_FRONT_TEMPLATE,
-	MEDICAL_ANKI_STYLING,
-	MEDICAL_ANKI_TEMPLATE_NAME,
-} from '../medical-anki-template'
+	OBSYANKI_BACK_TEMPLATE,
+	OBSYANKI_FRONT_TEMPLATE,
+	OBSYANKI_STYLING,
+	OBSYANKI_TEMPLATE_NAME,
+} from '../obsyanki-anki-template'
 import { capitalize, html, sanitizeNamespace, validateNamespace } from '../utilities'
 
 /**
@@ -31,7 +31,7 @@ const FORCE_LEGACY_SETTINGS = false
  * defined locally so the code also type-checks against pre-1.13 typings, like
  * the ones the Obsidian plugin review bot lints with.
  */
-type YankiSettingDefinition = {
+type ObsyankiSettingDefinition = {
 	desc?: DocumentFragment | string
 	name: string
 	render: (setting: Setting) => void
@@ -39,13 +39,13 @@ type YankiSettingDefinition = {
 	visible?: (() => boolean) | boolean
 }
 
-type YankiSettingGroup = {
+type ObsyankiSettingGroup = {
 	heading: string
-	items: YankiSettingDefinition[]
+	items: ObsyankiSettingDefinition[]
 	type: 'group'
 }
 
-export type YankiPluginSettings = {
+export type ObsyankiPluginSettings = {
 	ankiConnect: {
 		host: string
 		key: string | undefined
@@ -59,7 +59,7 @@ export type YankiPluginSettings = {
 		maxLength: number
 		mode: 'prompt' | 'response'
 	}
-	medicalAnki: {
+	obsyanki: {
 		defaultModelName: string
 		fieldAliases: string
 		fields: string
@@ -99,7 +99,7 @@ export type YankiPluginSettings = {
 /**
  * Default plugin settings TODO bind instead?
  */
-export function getYankiPluginDefaultSettings(app: App): YankiPluginSettings {
+export function getObsyankiPluginDefaultSettings(app: App): ObsyankiPluginSettings {
 	return {
 		ankiConnect: {
 			host: 'http://localhost',
@@ -115,7 +115,7 @@ export function getYankiPluginDefaultSettings(app: App): YankiPluginSettings {
 			maxLength: 60,
 			mode: 'prompt',
 		},
-		medicalAnki: {
+		obsyanki: {
 			defaultModelName: 'Cloze_obsidian',
 			fieldAliases: [
 				'Text=Text',
@@ -147,12 +147,12 @@ export function getYankiPluginDefaultSettings(app: App): YankiPluginSettings {
 			modelAliases: ['Cloze=Cloze_obsidian'].join('\n'),
 			textFieldName: 'Text',
 		},
-		// Defaults to vault ID the first time Yanki is run on a vault, but it may NOT be the actual current vault ID, e.g. when syncing is involved
+		// Defaults to vault ID the first time Obsyanki is run on a vault, but it may NOT be the actual current vault ID, e.g. when syncing is involved
 		// Using vault ID instead of name is more robust to vault renaming
 		// But why is the vault ID API private?
 		// https://forum.obsidian.md/t/is-there-any-way-to-derive-the-vault-id-from-the-vault-directory/5573/4
 		// Warning: changing the static components of this string can result in data loss...
-		namespace: `Yanki Obsidian - Vault ID ${sanitizeNamespace(app.appId)}`,
+		namespace: `Obsyanki Obsidian - Vault ID ${sanitizeNamespace(app.appId)}`,
 		showAdvancedSettings: false,
 		stats: {
 			sync: {
@@ -182,13 +182,13 @@ export function getYankiPluginDefaultSettings(app: App): YankiPluginSettings {
 	}
 }
 
-export class YankiPluginSettingTab extends PluginSettingTab {
-	override plugin: YankiPlugin
+export class ObsyankiPluginSettingTab extends PluginSettingTab {
+	override plugin: ObsyankiPlugin
 	private folderAddSetting?: Setting
-	private initialSettings: YankiPluginSettings = getYankiPluginDefaultSettings(this.app)
+	private initialSettings: ObsyankiPluginSettings = getObsyankiPluginDefaultSettings(this.app)
 	private isSettingsOpen = false
 
-	constructor(app: App, plugin: YankiPlugin) {
+	constructor(app: App, plugin: ObsyankiPlugin) {
 		super(app, plugin)
 		this.plugin = plugin
 	}
@@ -198,7 +198,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 		this.renderLegacySettings()
 	}
 
-	override getSettingDefinitions(): YankiSettingGroup[] {
+	override getSettingDefinitions(): ObsyankiSettingGroup[] {
 		// eslint-disable-next-line ts/no-unnecessary-condition -- `FORCE_LEGACY_SETTINGS` is a hard-coded debug flag.
 		if (FORCE_LEGACY_SETTINGS) {
 			// With no definitions, Obsidian 1.13+ falls back to the `display()` code path.
@@ -241,26 +241,26 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 		this.renderLegacySettings()
 	}
 
-	private getSettingGroups(): YankiSettingGroup[] {
+	private getSettingGroups(): ObsyankiSettingGroup[] {
 		const advancedVisible = () => this.plugin.settings.showAdvancedSettings
 		const folders = this.plugin.settings.folders.length === 0 ? [''] : this.plugin.settings.folders
-		const medicalFolders =
-			this.plugin.settings.medicalAnki.folders.length === 0 ? [''] : this.plugin.settings.medicalAnki.folders
+		const obsyankiFolders =
+			this.plugin.settings.obsyanki.folders.length === 0 ? [''] : this.plugin.settings.obsyanki.folders
 		const { latestSyncTime } = this.plugin.settings.stats.sync
 		const syncTime = latestSyncTime === undefined ? 'Never' : moment.unix(latestSyncTime).fromNow()
 		const { auto, duration, errors, invalid, manual } = this.plugin.settings.stats.sync
 		const { ankiUnreachable, created, deleted, matched, unchanged, updated } =
 			this.plugin.settings.stats.sync.notes
 
-		const folderItems: YankiSettingDefinition[] = [
+		const folderItems: ObsyankiSettingDefinition[] = [
 			{
 				desc: sanitizeHTMLToDom(
-					html`Yanki will sync notes in the folders specified to Anki. Folder syncing is always
+					html`Obsyanki will sync notes in the folders specified to Anki. Folder syncing is always
 						recursive, and Anki decks will be created to match the hierarchy of your Obsidian
 						folders. See the
 						<a
 							href="https://github.com/kitschpatrol/yanki-obsidian?tab=readme-ov-file#markdown-note-types"
-							>Yanki documentation</a
+							>Obsyanki documentation</a
 						>
 						for details on how to structure the content of your flashcard notes.`,
 				),
@@ -363,10 +363,10 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 			},
 		)
 
-		const medicalFolderItems: YankiSettingDefinition[] = [
+		const obsyankiFolderItems: ObsyankiSettingDefinition[] = [
 			{
 				desc: sanitizeHTMLToDom(
-					html`These folders are scanned by the <strong>Sync all Main Notes to Anki</strong>
+					html`These folders are scanned by the <strong>Sync all Obsyanki folders to Anki</strong>
 						button. Notes without a <code>## Anki</code> section are ignored.`,
 				),
 				name: '',
@@ -377,12 +377,12 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 			},
 		]
 
-		for (const index of medicalFolders.keys()) {
-			medicalFolderItems.push({
-				name: `Block sync folder ${String(index + 1)}`,
+		for (const index of obsyankiFolders.keys()) {
+			obsyankiFolderItems.push({
+				name: `Obsyanki folder ${String(index + 1)}`,
 				render: (setting) => {
-					if (this.plugin.settings.medicalAnki.folders.length === 0) {
-						this.plugin.settings.medicalAnki.folders.push('')
+					if (this.plugin.settings.obsyanki.folders.length === 0) {
+						this.plugin.settings.obsyanki.folders.push('')
 					}
 
 					setting
@@ -390,9 +390,9 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 							new FolderSuggest(search.inputEl, this.app)
 							search
 								.setPlaceholder('Select a folder')
-								.setValue(this.plugin.settings.medicalAnki.folders[index] ?? '')
+								.setValue(this.plugin.settings.obsyanki.folders[index] ?? '')
 								.onChange((value) => {
-									this.plugin.settings.medicalAnki.folders[index] = value
+									this.plugin.settings.obsyanki.folders[index] = value
 								})
 
 							search.inputEl.addEventListener('blur', () => {
@@ -409,7 +409,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 								.setIcon('cross')
 								.setTooltip('Delete')
 								.onClick(async () => {
-									this.plugin.settings.medicalAnki.folders.splice(index, 1)
+									this.plugin.settings.obsyanki.folders.splice(index, 1)
 									await this.plugin.saveSettings()
 									this.render()
 								})
@@ -419,16 +419,16 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 			})
 		}
 
-		medicalFolderItems.push(
+		obsyankiFolderItems.push(
 			{
-				desc: 'Add another source folder for embedded Anki blocks.',
-				name: 'Add block sync folder',
+				desc: 'Add another source folder for embedded Obsyanki blocks.',
+				name: 'Add Obsyanki folder',
 				render: (setting) => {
 					setting
 						.setName('')
 						.addButton((button) => {
 							button.setButtonText('Add folder').onClick(async () => {
-								this.plugin.settings.medicalAnki.folders.push('')
+								this.plugin.settings.obsyanki.folders.push('')
 								await this.plugin.saveSettings()
 								this.render()
 							})
@@ -443,9 +443,9 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 					setting.addText((text) => {
 						text
 							.setPlaceholder('Cloze_obsidian')
-							.setValue(this.plugin.settings.medicalAnki.defaultModelName)
+							.setValue(this.plugin.settings.obsyanki.defaultModelName)
 							.onChange((value) => {
-								this.plugin.settings.medicalAnki.defaultModelName = value.trim()
+								this.plugin.settings.obsyanki.defaultModelName = value.trim()
 							})
 						text.inputEl.addEventListener('blur', () => {
 							void this.plugin.saveSettings()
@@ -460,9 +460,9 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 					setting.addTextArea((text) => {
 						text
 							.setPlaceholder('Text\nBack Extra')
-							.setValue(this.plugin.settings.medicalAnki.fields)
+							.setValue(this.plugin.settings.obsyanki.fields)
 							.onChange((value) => {
-								this.plugin.settings.medicalAnki.fields = value
+								this.plugin.settings.obsyanki.fields = value
 							})
 						text.inputEl.rows = 8
 						text.inputEl.addEventListener('blur', () => {
@@ -478,9 +478,9 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 					setting.addText((text) => {
 						text
 							.setPlaceholder('Text')
-							.setValue(this.plugin.settings.medicalAnki.textFieldName)
+							.setValue(this.plugin.settings.obsyanki.textFieldName)
 							.onChange((value) => {
-								this.plugin.settings.medicalAnki.textFieldName = value.trim()
+								this.plugin.settings.obsyanki.textFieldName = value.trim()
 							})
 						text.inputEl.addEventListener('blur', () => {
 							void this.plugin.saveSettings()
@@ -495,9 +495,9 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 					setting.addTextArea((text) => {
 						text
 							.setPlaceholder('Cloze=Cloze_obsidian')
-							.setValue(this.plugin.settings.medicalAnki.modelAliases)
+							.setValue(this.plugin.settings.obsyanki.modelAliases)
 							.onChange((value) => {
-								this.plugin.settings.medicalAnki.modelAliases = value
+								this.plugin.settings.obsyanki.modelAliases = value
 							})
 						text.inputEl.rows = 4
 						text.inputEl.addEventListener('blur', () => {
@@ -513,9 +513,9 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 					setting.addTextArea((text) => {
 						text
 							.setPlaceholder('Definitions=Definitionen')
-							.setValue(this.plugin.settings.medicalAnki.fieldAliases)
+							.setValue(this.plugin.settings.obsyanki.fieldAliases)
 							.onChange((value) => {
-								this.plugin.settings.medicalAnki.fieldAliases = value
+								this.plugin.settings.obsyanki.fieldAliases = value
 							})
 						text.inputEl.rows = 8
 						text.inputEl.addEventListener('blur', () => {
@@ -550,7 +550,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 					setting.setName('').addButton((button) => {
 						button.setButtonText('Install / update template')
 						button.onClick(() => {
-							void this.installMedicalAnkiTemplate()
+							void this.installObsyankiTemplate()
 						})
 					})
 				},
@@ -559,8 +559,8 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 
 		return [
 			{
-				heading: 'Live Anki blocks',
-				items: medicalFolderItems,
+				heading: 'Obsyanki blocks',
+				items: obsyankiFolderItems,
 				type: 'group',
 			},
 			{
@@ -620,7 +620,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 									.setValue(this.plugin.settings.sync.mediaMode)
 									.onChange(async (value) => {
 										this.plugin.settings.sync.mediaMode =
-											value as YankiPluginSettings['sync']['mediaMode']
+											value as ObsyankiPluginSettings['sync']['mediaMode']
 										await this.plugin.saveSettings()
 									})
 							})
@@ -651,7 +651,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 				items: [
 					{
 						desc: sanitizeHTMLToDom(
-							html`Yanki can set the file name of flashcard notes to a snippet of text derived from
+							html`Obsyanki can set the file name of flashcard notes to a snippet of text derived from
 								the note’s contents. This feature is
 								<strong>not compatible with Obsidian Sync</strong>.`,
 						),
@@ -677,7 +677,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 									.setValue(this.plugin.settings.manageFilenames.autoRenameTrigger)
 									.onChange(async (value) => {
 										this.plugin.settings.manageFilenames.autoRenameTrigger =
-											value as YankiPluginSettings['manageFilenames']['autoRenameTrigger']
+											value as ObsyankiPluginSettings['manageFilenames']['autoRenameTrigger']
 										await this.plugin.saveSettings()
 										this.render()
 									})
@@ -697,7 +697,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 									.setValue(this.plugin.settings.manageFilenames.mode)
 									.onChange(async (value) => {
 										this.plugin.settings.manageFilenames.mode =
-											value as YankiPluginSettings['manageFilenames']['mode']
+											value as ObsyankiPluginSettings['manageFilenames']['mode']
 										await this.plugin.saveSettings()
 									})
 							})
@@ -708,7 +708,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 						render: (setting) => {
 							setting.addText((text) => {
 								text.setPlaceholder(
-									String(getYankiPluginDefaultSettings(this.app).manageFilenames.maxLength),
+									String(getObsyankiPluginDefaultSettings(this.app).manageFilenames.maxLength),
 								)
 								text.setValue(String(this.plugin.settings.manageFilenames.maxLength))
 								text.onChange((value) => {
@@ -744,7 +744,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 								Anki. See the
 								<a
 									href="https://github.com/kitschpatrol/yanki-obsidian?tab=readme-ov-file#quick-start"
-									>Yanki quick start guide</a
+									>Obsyanki quick start guide</a
 								>
 								for instructions on how to set up AnkiConnect, and the
 								<a href="https://git.sr.ht/~foosoft/anki-connect">AnkiConnect documentation</a> for
@@ -770,7 +770,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 									if (parsedUrl === undefined) {
 										new Notice(
 											sanitizeHTMLToDom(
-												html`<strong>Yanki:</strong><br />Invalid AnkiConnect host and port.`,
+												html`<strong>Obsyanki:</strong><br />Invalid AnkiConnect host and port.`,
 											),
 										)
 									} else {
@@ -808,13 +808,13 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 								button.setButtonText('Reset to AnkiConnect defaults')
 								button.onClick(async () => {
 									this.plugin.settings.ankiConnect = structuredClone(
-										getYankiPluginDefaultSettings(this.app).ankiConnect,
+										getObsyankiPluginDefaultSettings(this.app).ankiConnect,
 									)
 									await this.plugin.saveSettings()
 									this.render()
 									new Notice(
 										sanitizeHTMLToDom(
-											html`<strong>Yanki:</strong><br />Reset Yanki’s AnkiConnect settings to
+											html`<strong>Obsyanki:</strong><br />Reset Obsyanki’s AnkiConnect settings to
 												defaults.`,
 										),
 									)
@@ -903,13 +903,13 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 									button.setButtonText('Reset sync stats')
 									button.onClick(async () => {
 										this.plugin.settings.stats.sync = structuredClone(
-											getYankiPluginDefaultSettings(this.app).stats.sync,
+											getObsyankiPluginDefaultSettings(this.app).stats.sync,
 										)
 										await this.plugin.saveSettings()
 										this.render()
 										new Notice(
 											sanitizeHTMLToDom(
-												html`<strong>Yanki:</strong><br />Reset Yanki’s sync stats.`,
+												html`<strong>Obsyanki:</strong><br />Reset Obsyanki’s sync stats.`,
 											),
 										)
 									})
@@ -948,7 +948,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 								vault synchronization. Backup both Obsidian and Anki first. See the
 								<a
 									href="https://github.com/kitschpatrol/yanki-obsidian?tab=readme-ov-file#namespace"
-									>Yanki documentation</a
+									>Obsyanki documentation</a
 								>
 								for more details on how namespaces work.`,
 						),
@@ -962,7 +962,7 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 										this.plugin.settings.namespace = value
 									} else {
 										new Notice(
-											sanitizeHTMLToDom(html`<strong>Yanki:</strong><br />Invalid namespace.`),
+											sanitizeHTMLToDom(html`<strong>Obsyanki:</strong><br />Invalid namespace.`),
 										)
 									}
 								})
@@ -991,14 +991,14 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 
 									button.setButtonText('Reset namespace to vault ID')
 									button.onClick(async () => {
-										this.plugin.settings.namespace = getYankiPluginDefaultSettings(
+										this.plugin.settings.namespace = getObsyankiPluginDefaultSettings(
 											this.app,
 										).namespace
 										await this.plugin.saveSettings()
 										this.render()
 										new Notice(
 											sanitizeHTMLToDom(
-												html`<strong>Yanki:</strong><br />Reset Yanki’s namespace to default.`,
+												html`<strong>Obsyanki:</strong><br />Reset Obsyanki’s namespace to default.`,
 											),
 										)
 									})
@@ -1014,11 +1014,11 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 								button.onClick(async () => {
 									// TODO warn!
 
-									this.plugin.settings = structuredClone(getYankiPluginDefaultSettings(this.app))
+									this.plugin.settings = structuredClone(getObsyankiPluginDefaultSettings(this.app))
 									await this.plugin.saveSettings()
 									this.render()
 									new Notice(
-										sanitizeHTMLToDom(html`<strong>Yanki:</strong><br />Reset Yanki’s settings.`),
+										sanitizeHTMLToDom(html`<strong>Obsyanki:</strong><br />Reset Obsyanki’s settings.`),
 									)
 								})
 							})
@@ -1032,13 +1032,13 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 	}
 
 	private prepareSettingsDisplay(): void {
-		this.containerEl.addClass('yanki-settings')
-		this.containerEl.setAttr('id', 'yanki-settings')
+		this.containerEl.addClass('obsyanki-settings')
+		this.containerEl.setAttr('id', 'obsyanki-settings')
 		this.plugin.syncFlashcardNotesToAnki.clear()
 		this.plugin.updateNoteFilenames.clear()
 	}
 
-	private renderLegacySetting(definition: YankiSettingDefinition): void {
+	private renderLegacySetting(definition: ObsyankiSettingDefinition): void {
 		const { visible = true } = definition
 		const isVisible = typeof visible === 'function' ? visible() : visible
 
@@ -1084,36 +1084,36 @@ export class YankiPluginSettingTab extends PluginSettingTab {
 		this.isSettingsOpen = true
 	}
 
-	private async installMedicalAnkiTemplate(): Promise<void> {
-		const modelName = this.plugin.settings.medicalAnki.defaultModelName.trim()
+	private async installObsyankiTemplate(): Promise<void> {
+		const modelName = this.plugin.settings.obsyanki.defaultModelName.trim()
 		if (modelName.length === 0) {
 			new Notice(
-				sanitizeHTMLToDom(html`<strong>Obsidian Live to Anki:</strong><br />Set a note type first.`),
+				sanitizeHTMLToDom(html`<strong>Obsyanki:</strong><br />Set a note type first.`),
 			)
 			return
 		}
 
 		try {
-			const client = new MedicalAnkiConnectClient(this.plugin.settings.ankiConnect)
+			const client = new ObsyankiConnectClient(this.plugin.settings.ankiConnect)
 			await client.updateModelTemplate({
-				back: MEDICAL_ANKI_BACK_TEMPLATE,
-				css: MEDICAL_ANKI_STYLING,
-				front: MEDICAL_ANKI_FRONT_TEMPLATE,
+				back: OBSYANKI_BACK_TEMPLATE,
+				css: OBSYANKI_STYLING,
+				front: OBSYANKI_FRONT_TEMPLATE,
 				modelName,
-				templateName: MEDICAL_ANKI_TEMPLATE_NAME,
+				templateName: OBSYANKI_TEMPLATE_NAME,
 			})
 			new Notice(
 				sanitizeHTMLToDom(
-					html`<strong>Obsidian Live to Anki:</strong><br />Updated Anki template for
+					html`<strong>Obsyanki:</strong><br />Updated Anki template for
 						<code>${modelName}</code>.`,
 				),
 			)
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error)
-			console.error('Medical Anki template install failed', error)
+			console.error('Obsyanki template install failed', error)
 			new Notice(
 				sanitizeHTMLToDom(
-					html`<strong>Obsidian Live to Anki:</strong><br />Template update failed:
+					html`<strong>Obsyanki:</strong><br />Template update failed:
 						<code>${message}</code>`,
 				),
 				10_000,

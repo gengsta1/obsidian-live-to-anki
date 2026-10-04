@@ -1,10 +1,10 @@
 {
   "author": "gengsta1, based on Yanki by Kitschpatrol",
   "authorUrl": "https://github.com/gengsta1",
-  "description": "Sync embedded medical Anki blocks from Obsidian master notes to Anki.",
-  "id": "obsidian-live-to-anki",
+  "description": "Sync embedded Obsyanki blocks from Obsidian notes to Anki.",
+  "id": "obsyanki",
   "version": "0.1.0",
   "isDesktopOnly": true,
   "minAppVersion": "1.9.12",
-  "name": "Obsidian Live to Anki"
+  "name": "Obsyanki"
 }

@@ -10,14 +10,18 @@ test('loads the release bundle and reports an unconfigured sync in Obsidian', as
 		await browser.executeObsidian(({ app }) =>
 			app.commands
 				.listCommands()
-				.filter(({ id }) => id.startsWith('obsidian-live-to-anki:'))
+				.filter(({ id }) => id.startsWith('obsyanki:'))
 				.map(({ id }) => id),
 		),
-	).toEqual(['obsidian-live-to-anki:sync', 'obsidian-live-to-anki:sync-medical-blocks'])
-	await browser.executeObsidianCommand('obsidian-live-to-anki:sync')
+	).toEqual([
+		'obsyanki:sync',
+		'obsyanki:sync-obsyanki-blocks',
+		'obsyanki:sync-main-notes-obsyanki-blocks',
+	])
+	await browser.executeObsidianCommand('obsyanki:sync')
 	await expect
 		.poll(async () =>
-			browser.executeObsidian(({ plugins }) => plugins.obsidianLiveToAnki.settings.stats.sync.invalid),
+			browser.executeObsidian(({ plugins }) => plugins.obsyanki.settings.stats.sync.invalid),
 		)
 		.toBe(1)
 	await expect
@@ -31,11 +35,11 @@ test('offers installer updates and issue reporting after a sync error', async ({
 	await browser.executeObsidian(({ plugins }) => {
 		// Inject a read failure into this test's disposable plugin instance.
 		// eslint-disable-next-line ts/require-await -- The async adapter deliberately rejects without reading a file.
-		plugins.obsidianLiveToAnki.fileAdapterRead = async () => {
+		plugins.obsyanki.fileAdapterRead = async () => {
 			throw new Error('Could not read test flashcard')
 		}
 	})
-	await browser.executeObsidianCommand('obsidian-live-to-anki:sync')
+	await browser.executeObsidianCommand('obsyanki:sync')
 	const notice = browser.$(
 		'.notice:has(a[href="https://obsidian.md/help/updates#Installer+updates"])',
 	)
@@ -48,7 +52,7 @@ test('offers installer updates and issue reporting after a sync error', async ({
 		await notice.$('a[href="https://github.com/kitschpatrol/yanki-obsidian/issues"]').getText(),
 	).toBe('open an issue')
 	expect(
-		await browser.executeObsidian(({ plugins }) => plugins.obsidianLiveToAnki.settings.stats.sync),
+		await browser.executeObsidian(({ plugins }) => plugins.obsyanki.settings.stats.sync),
 	).toMatchObject({ errors: 1, manual: 0 })
 })
 
@@ -64,19 +68,19 @@ test('persists folder settings from the UI through plugin reloads', async ({ des
 	await expect
 		.poll(async () =>
 			browser.executeObsidian(async ({ plugins }) => {
-				const settings = await plugins.obsidianLiveToAnki.loadData()
+				const settings = await plugins.obsyanki.loadData()
 				return settings?.folders
 			}),
 		)
 		.toEqual(['Anki'])
 	for (let i = 0; i < 2; i++) {
-		await browser.getObsidianPage().disablePlugin('obsidian-live-to-anki')
+		await browser.getObsidianPage().disablePlugin('obsyanki')
 		expect(
 			await browser.executeObsidian(({ app }) =>
-				app.commands.listCommands().some(({ id }) => id === 'obsidian-live-to-anki:sync'),
+				app.commands.listCommands().some(({ id }) => id === 'obsyanki:sync'),
 			),
 		).toBe(false)
-		await browser.getObsidianPage().enablePlugin('obsidian-live-to-anki')
+		await browser.getObsidianPage().enablePlugin('obsyanki')
 	}
 
 	await openSettings(browser)
@@ -86,7 +90,7 @@ test('persists folder settings from the UI through plugin reloads', async ({ des
 	await closeSettings(browser, mainWindow)
 	expect(
 		await browser.executeObsidian(({ app }) =>
-			app.commands.listCommands().filter(({ id }) => id === 'obsidian-live-to-anki:sync'),
+			app.commands.listCommands().filter(({ id }) => id === 'obsyanki:sync'),
 		),
 	).toHaveLength(1)
 })
@@ -103,7 +107,7 @@ test('uses real vault files to filter folders and preserves links when renaming'
 	await watchFolders(browser, ['Anki', 'Anki/Animals', 'Anki/', ''])
 	expect(
 		await browser.executeObsidian(({ plugins }) =>
-			plugins.obsidianLiveToAnki
+			plugins.obsyanki
 				.getWatchedFiles()
 				.map(({ path }) => path)
 				.toSorted(),
@@ -127,7 +131,7 @@ test('uses real vault files to filter folders and preserves links when renaming'
 		}
 
 		const root = app.vault.adapter.getBasePath().replaceAll('\\', '/')
-		await plugins.obsidianLiveToAnki.fileAdapterRename(
+		await plugins.obsyanki.fileAdapterRename(
 			`${root}/Anki/Animals/Biped/Plato.md`,
 			`${root}/Anki/Animals/Biped/Philosopher.md`,
 		)
@@ -141,11 +145,11 @@ test('syncs a vault edit automatically after disable and re-enable', async ({ de
 	const { anki, browser, namespace } = desktop
 	await watchFolders(browser)
 	await sync(browser)
-	await browser.getObsidianPage().disablePlugin('obsidian-live-to-anki')
-	await browser.getObsidianPage().enablePlugin('obsidian-live-to-anki')
+	await browser.getObsidianPage().disablePlugin('obsyanki')
+	await browser.getObsidianPage().enablePlugin('obsyanki')
 	await browser.executeObsidian(async ({ app, plugins }) => {
-		plugins.obsidianLiveToAnki.settings.sync.autoSyncEnabled = true
-		await plugins.obsidianLiveToAnki.saveSettings()
+		plugins.obsyanki.settings.sync.autoSyncEnabled = true
+		await plugins.obsyanki.saveSettings()
 		const file = app.vault.getFileByPath('Anki/Animals/Biped/Plato.md')
 		if (!file) {
 			throw new Error('Plato fixture missing')
@@ -166,6 +170,6 @@ test('syncs a vault edit automatically after disable and re-enable', async ({ de
 		.toContain('A philosopher.')
 	expect(await ankiRequest<number[]>(anki, 'findNotes', { query })).toHaveLength(4)
 	expect(
-		await browser.executeObsidian(({ plugins }) => plugins.obsidianLiveToAnki.settings.stats.sync.errors),
+		await browser.executeObsidian(({ plugins }) => plugins.obsyanki.settings.stats.sync.errors),
 	).toBe(0)
 })

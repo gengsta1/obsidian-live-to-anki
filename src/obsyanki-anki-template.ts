@@ -1,6 +1,6 @@
-export const MEDICAL_ANKI_TEMPLATE_NAME = 'Cloze'
+export const OBSYANKI_TEMPLATE_NAME = 'Cloze'
 
-export const MEDICAL_ANKI_FRONT_TEMPLATE = String.raw`<div id="obsidian-card" class="card-shell">
+export const OBSYANKI_FRONT_TEMPLATE = String.raw`<div id="obsidian-card" class="card-shell">
     <div id="text" class="main-text">
         {{cloze:Text}}
     </div>
@@ -81,7 +81,7 @@ export const MEDICAL_ANKI_FRONT_TEMPLATE = String.raw`<div id="obsidian-card" cl
 })();
 </script>`
 
-export const MEDICAL_ANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
+export const OBSYANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
     <div id="text" class="main-text">
         {{cloze:Text}}
     </div>
@@ -378,7 +378,7 @@ export const MEDICAL_ANKI_BACK_TEMPLATE = String.raw`<div class="card-shell">
 })();
 </script>`
 
-export const MEDICAL_ANKI_STYLING = String.raw`:root {
+export const OBSYANKI_STYLING = String.raw`:root {
     --bg: #f7f7f7;
     --text: #29292d;
     --bg-dark: #2f2f31;

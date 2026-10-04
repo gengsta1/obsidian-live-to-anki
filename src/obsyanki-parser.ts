@@ -1,12 +1,12 @@
-export type ParsedMedicalAnkiDocument = {
+export type ParsedObsyankiDocument = {
 	ankiSection: string
-	cards: ParsedMedicalCardBlock[]
+	cards: ParsedObsyankiCardBlock[]
 	errors: string[]
 	fileTags: string[]
 	targetDeck: null | string
 }
 
-export type ParsedMedicalCardBlock = {
+export type ParsedObsyankiCardBlock = {
 	endOffset: number
 	fields: Record<string, string>
 	modelName: string
@@ -16,7 +16,7 @@ export type ParsedMedicalCardBlock = {
 	tags: string[]
 }
 
-export type MedicalParserOptions = {
+export type ObsyankiParserOptions = {
 	defaultModelName: string
 	fieldAliases: Record<string, string>
 	fields: string[]
@@ -49,7 +49,7 @@ export const CLOZE_OBSIDIAN_FIELDS = [
 	'One by one',
 ]
 
-export const DEFAULT_MEDICAL_PARSER_OPTIONS: MedicalParserOptions = {
+export const DEFAULT_OBSYANKI_PARSER_OPTIONS: ObsyankiParserOptions = {
 	defaultModelName: 'Cloze_obsidian',
 	fieldAliases: {
 		'back extra': 'Back Extra',
@@ -99,10 +99,10 @@ export const FIELD_ALIASES: Record<string, string> = {
 	text: 'Text',
 }
 
-export function parseMedicalAnkiDocument(
+export function parseObsyankiDocument(
 	markdown: string,
-	options: MedicalParserOptions = DEFAULT_MEDICAL_PARSER_OPTIONS,
-): ParsedMedicalAnkiDocument {
+	options: ObsyankiParserOptions = DEFAULT_OBSYANKI_PARSER_OPTIONS,
+): ParsedObsyankiDocument {
 	const header = ANKI_HEADER_RE.exec(markdown)
 	if (header === null) {
 		return {
@@ -123,7 +123,7 @@ export function parseMedicalAnkiDocument(
 		errors.push("TARGET DECK fehlt im Abschnitt '## Anki'.")
 	}
 
-	const cards: ParsedMedicalCardBlock[] = []
+	const cards: ParsedObsyankiCardBlock[] = []
 	for (const match of ankiSection.matchAll(BLOCK_RE)) {
 		const raw = match[0]
 		const inner = match[1] ?? ''
@@ -154,7 +154,7 @@ export function splitTags(input: string): string[] {
 
 export function insertSyncedNoteIds(
 	markdown: string,
-	synced: { card: ParsedMedicalCardBlock; noteId: string }[],
+	synced: { card: ParsedObsyankiCardBlock; noteId: string }[],
 ): string {
 	const sorted = [...synced].sort((a, b) => b.card.endOffset - a.card.endOffset)
 	let updated = markdown
@@ -180,8 +180,8 @@ function parseCardInner(
 	noteId: null | string,
 	startOffset: number,
 	endOffset: number,
-	options: MedicalParserOptions,
-): { card: ParsedMedicalCardBlock; errors: string[] } {
+	options: ObsyankiParserOptions,
+): { card: ParsedObsyankiCardBlock; errors: string[] } {
 	const normalized = inner.replaceAll('\r\n', '\n')
 	const firstLineMatch = /^([^\n]+)\n?/u.exec(normalized)
 	const modelName = normalizeModelName(firstLineMatch?.[1]?.trim() ?? '', options)
@@ -219,7 +219,7 @@ function parseCardInner(
 	}
 }
 
-function parseFields(body: string, options: MedicalParserOptions): Record<string, string> {
+function parseFields(body: string, options: ObsyankiParserOptions): Record<string, string> {
 	const spans: FieldSpan[] = []
 	for (const match of body.matchAll(FIELD_RE)) {
 		const lineStart = match.index ?? 0
@@ -245,12 +245,12 @@ function parseFields(body: string, options: MedicalParserOptions): Record<string
 	return fields
 }
 
-function normalizeFieldName(fieldName: string, options: MedicalParserOptions): string {
+function normalizeFieldName(fieldName: string, options: ObsyankiParserOptions): string {
 	const normalized = fieldName.toLowerCase().replaceAll(/\s+/gu, ' ').trim()
 	return options.fieldAliases[normalized] ?? fieldName
 }
 
-function normalizeModelName(modelName: string, options: MedicalParserOptions): string {
+function normalizeModelName(modelName: string, options: ObsyankiParserOptions): string {
 	const normalized = modelName.toLowerCase().replaceAll(/\s+/gu, ' ').trim()
 	return options.modelAliases[normalized] ?? modelName
 }

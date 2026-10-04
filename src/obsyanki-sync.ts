@@ -1,23 +1,23 @@
 import { Notice, TFile } from 'obsidian'
-import type YankiPlugin from './main'
-import { MedicalAnkiConnectClient, type MedicalAnkiNotePayload } from './medical-anki-connect'
+import type ObsyankiPlugin from './main'
+import { ObsyankiConnectClient, type ObsyankiNotePayload } from './obsyanki-anki-connect'
 import {
 	CLOZE_OBSIDIAN_FIELDS,
-	DEFAULT_MEDICAL_PARSER_OPTIONS,
+	DEFAULT_OBSYANKI_PARSER_OPTIONS,
 	insertSyncedNoteIds,
-	parseMedicalAnkiDocument,
-	type MedicalParserOptions,
-	type ParsedMedicalCardBlock,
-} from './medical-parser'
+	parseObsyankiDocument,
+	type ObsyankiParserOptions,
+	type ParsedObsyankiCardBlock,
+} from './obsyanki-parser'
 
-export type MedicalSyncFileResult = {
+export type ObsyankiSyncFileResult = {
 	deckName: null | string
 	filePath: string
 	skipped: number
 	synced: number
 }
 
-export async function syncCurrentMedicalNote(plugin: YankiPlugin): Promise<void> {
+export async function syncCurrentObsyankiNote(plugin: ObsyankiPlugin): Promise<void> {
 	try {
 		const file = plugin.app.workspace.getActiveFile()
 		if (file === null) {
@@ -25,17 +25,17 @@ export async function syncCurrentMedicalNote(plugin: YankiPlugin): Promise<void>
 			return
 		}
 
-		await syncMedicalFile(plugin, file, true)
+		await syncObsyankiFile(plugin, file, true)
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
-		console.error('Medical Anki sync failed', error)
-		new Notice(`Medical Anki sync failed: ${message}`, 10_000)
+		console.error('Obsyanki sync failed', error)
+		new Notice(`Obsyanki sync failed: ${message}`, 10_000)
 	}
 }
 
-export async function syncMainNotesMedicalAnki(plugin: YankiPlugin): Promise<void> {
+export async function syncMainNotesObsyanki(plugin: ObsyankiPlugin): Promise<void> {
 	try {
-		const folders = getMedicalAnkiFolders(plugin)
+		const folders = getObsyankiFolders(plugin)
 		const files = plugin.app.vault
 			.getMarkdownFiles()
 			.filter((file) => folders.some((folder) => isFileInFolder(file.path, folder)))
@@ -45,7 +45,7 @@ export async function syncMainNotesMedicalAnki(plugin: YankiPlugin): Promise<voi
 		let touchedFiles = 0
 
 		for (const file of files) {
-			const result = await syncMedicalFile(plugin, file)
+			const result = await syncObsyankiFile(plugin, file)
 			synced += result.synced
 			skipped += result.skipped
 			if (result.synced > 0 || result.skipped > 0) {
@@ -54,11 +54,11 @@ export async function syncMainNotesMedicalAnki(plugin: YankiPlugin): Promise<voi
 		}
 
 		new Notice(
-			`Medical Anki sync: ${synced} note${synced === 1 ? '' : 's'} synced from ${folders.length} folder${folders.length === 1 ? '' : 's'}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
+			`Obsyanki sync: ${synced} note${synced === 1 ? '' : 's'} synced from ${folders.length} folder${folders.length === 1 ? '' : 's'}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
 			10_000,
 		)
 
-		console.info('Medical Anki Main Notes sync complete', {
+		console.info('Obsyanki Main Notes sync complete', {
 			filesScanned: files.length,
 			skipped,
 			synced,
@@ -66,16 +66,16 @@ export async function syncMainNotesMedicalAnki(plugin: YankiPlugin): Promise<voi
 		})
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
-		console.error('Medical Anki Main Notes sync failed', error)
-		new Notice(`Medical Anki sync failed: ${message}`, 10_000)
+		console.error('Obsyanki Main Notes sync failed', error)
+		new Notice(`Obsyanki sync failed: ${message}`, 10_000)
 	}
 }
 
-export async function syncMedicalFile(
-	plugin: YankiPlugin,
+export async function syncObsyankiFile(
+	plugin: ObsyankiPlugin,
 	file: TFile,
 	showSuccessNotice = false,
-): Promise<MedicalSyncFileResult> {
+): Promise<ObsyankiSyncFileResult> {
 	if (file.extension !== 'md') {
 		return emptyResult(file.path)
 	}
@@ -85,10 +85,10 @@ export async function syncMedicalFile(
 		return emptyResult(file.path)
 	}
 
-	const options = getMedicalParserOptions(plugin)
-	const parsed = parseMedicalAnkiDocument(markdown, options)
+	const options = getObsyankiParserOptions(plugin)
+	const parsed = parseObsyankiDocument(markdown, options)
 	if (parsed.errors.length > 0) {
-		console.warn('Medical Anki parser skipped malformed content', {
+		console.warn('Obsyanki parser skipped malformed content', {
 			errors: parsed.errors,
 			path: file.path,
 		})
@@ -98,8 +98,8 @@ export async function syncMedicalFile(
 		return emptyResult(file.path)
 	}
 
-	const client = new MedicalAnkiConnectClient(plugin.settings.ankiConnect)
-	const synced: { card: ParsedMedicalCardBlock; noteId: string }[] = []
+	const client = new ObsyankiConnectClient(plugin.settings.ankiConnect)
+	const synced: { card: ParsedObsyankiCardBlock; noteId: string }[] = []
 	let skipped = 0
 
 	for (const card of parsed.cards) {
@@ -116,7 +116,7 @@ export async function syncMedicalFile(
 				throw new Error(`Model '${modelName}' lacks field '${missing[0]}'.`)
 			}
 
-			const payload: MedicalAnkiNotePayload = {
+			const payload: ObsyankiNotePayload = {
 				deckName: parsed.targetDeck,
 				fields: renderFieldsForAnki(card.fields),
 				modelName,
@@ -132,7 +132,7 @@ export async function syncMedicalFile(
 			}
 		} catch (error) {
 			skipped += 1
-			console.warn('Medical Anki card skipped', {
+			console.warn('Obsyanki card skipped', {
 				error,
 				modelName,
 				path: file.path,
@@ -157,7 +157,7 @@ export async function syncMedicalFile(
 		}
 
 		new Notice(
-			`Medical Anki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced to ${parsed.targetDeck}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
+			`Obsyanki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced to ${parsed.targetDeck}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
 		)
 	}
 
@@ -169,31 +169,31 @@ export async function syncMedicalFile(
 	}
 }
 
-function getMedicalAnkiFolders(plugin: YankiPlugin): string[] {
-	const folders = plugin.settings.medicalAnki.folders
+function getObsyankiFolders(plugin: ObsyankiPlugin): string[] {
+	const folders = plugin.settings.obsyanki.folders
 		.map((folder) => folder.trim().replaceAll(/\/+$/gu, ''))
 		.filter(Boolean)
 	return folders.length === 0 ? ['6 - Main Notes'] : folders
 }
 
-function getMedicalParserOptions(plugin: YankiPlugin): MedicalParserOptions {
-	const fields = splitLines(plugin.settings.medicalAnki.fields)
+function getObsyankiParserOptions(plugin: ObsyankiPlugin): ObsyankiParserOptions {
+	const fields = splitLines(plugin.settings.obsyanki.fields)
 	return {
 		defaultModelName:
-			plugin.settings.medicalAnki.defaultModelName.trim() ||
-			DEFAULT_MEDICAL_PARSER_OPTIONS.defaultModelName,
+			plugin.settings.obsyanki.defaultModelName.trim() ||
+			DEFAULT_OBSYANKI_PARSER_OPTIONS.defaultModelName,
 		fieldAliases: {
-			...DEFAULT_MEDICAL_PARSER_OPTIONS.fieldAliases,
-			...parseAliasMap(plugin.settings.medicalAnki.fieldAliases),
+			...DEFAULT_OBSYANKI_PARSER_OPTIONS.fieldAliases,
+			...parseAliasMap(plugin.settings.obsyanki.fieldAliases),
 		},
 		fields: fields.length > 0 ? fields : CLOZE_OBSIDIAN_FIELDS,
 		modelAliases: {
-			...DEFAULT_MEDICAL_PARSER_OPTIONS.modelAliases,
-			...parseAliasMap(plugin.settings.medicalAnki.modelAliases),
+			...DEFAULT_OBSYANKI_PARSER_OPTIONS.modelAliases,
+			...parseAliasMap(plugin.settings.obsyanki.modelAliases),
 		},
 		textFieldName:
-			plugin.settings.medicalAnki.textFieldName.trim() ||
-			DEFAULT_MEDICAL_PARSER_OPTIONS.textFieldName,
+			plugin.settings.obsyanki.textFieldName.trim() ||
+			DEFAULT_OBSYANKI_PARSER_OPTIONS.textFieldName,
 	}
 }
 
@@ -240,7 +240,7 @@ function splitLines(input: string): string[] {
 		.filter(Boolean)
 }
 
-function emptyResult(filePath: string): MedicalSyncFileResult {
+function emptyResult(filePath: string): ObsyankiSyncFileResult {
 	return {
 		deckName: null,
 		filePath,

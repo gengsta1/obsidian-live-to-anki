@@ -1,4 +1,4 @@
-div.yanki-settings {
+div.obsyanki-settings {
 	/* Catches the automatic first-input focus without opening the first folder search drop-down. */
 	input.focus-catcher {
 		display: none;

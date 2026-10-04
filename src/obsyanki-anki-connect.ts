@@ -1,19 +1,19 @@
 import { requestUrl } from 'obsidian'
 
-export type MedicalAnkiConnectSettings = {
+export type ObsyankiConnectSettings = {
 	host: string
 	key: string | undefined
 	port: number
 }
 
-export type MedicalAnkiNotePayload = {
+export type ObsyankiNotePayload = {
 	deckName: string
 	fields: Record<string, string>
 	modelName: string
 	tags: string[]
 }
 
-export type MedicalAnkiTemplatePayload = {
+export type ObsyankiTemplatePayload = {
 	back: string
 	css: string
 	front: string
@@ -26,14 +26,14 @@ type AnkiConnectResponse<T> = {
 	result: T
 }
 
-export class MedicalAnkiConnectClient {
-	private readonly settings: MedicalAnkiConnectSettings
+export class ObsyankiConnectClient {
+	private readonly settings: ObsyankiConnectSettings
 
-	public constructor(settings: MedicalAnkiConnectSettings) {
+	public constructor(settings: ObsyankiConnectSettings) {
 		this.settings = settings
 	}
 
-	public async addNote(note: MedicalAnkiNotePayload): Promise<string> {
+	public async addNote(note: ObsyankiNotePayload): Promise<string> {
 		await this.createDeck(note.deckName)
 
 		const result = await this.invoke<number>('addNote', {
@@ -57,7 +57,7 @@ export class MedicalAnkiConnectClient {
 		return requiredFields.filter((field) => !available.has(field))
 	}
 
-	public async updateModelTemplate(template: MedicalAnkiTemplatePayload): Promise<void> {
+	public async updateModelTemplate(template: ObsyankiTemplatePayload): Promise<void> {
 		await this.invoke('updateModelTemplates', {
 			model: {
 				name: template.modelName,
@@ -78,7 +78,7 @@ export class MedicalAnkiConnectClient {
 		})
 	}
 
-	public async updateNote(noteId: string, note: MedicalAnkiNotePayload): Promise<void> {
+	public async updateNote(noteId: string, note: ObsyankiNotePayload): Promise<void> {
 		await this.invoke('updateNoteFields', {
 			note: {
 				fields: note.fields,

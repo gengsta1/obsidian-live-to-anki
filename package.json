@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-live-to-anki",
+	"name": "obsyanki",
 	"version": "0.1.0",
-	"description": "An Obsidian plugin that syncs embedded medical Anki blocks from Obsidian master notes to Anki.",
+	"description": "An Obsidian plugin that syncs embedded Obsyanki blocks from Obsidian notes to Anki.",
 	"keywords": [
 		"obsidian",
 		"obsidian-md",
@@ -17,7 +17,7 @@
 	"bugs": "",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/gengsta1/obsidian-live-to-anki.git"
+		"url": "git+https://github.com/gengsta1/obsyanki.git"
 	},
 	"license": "MIT",
 	"author": {
@@ -33,7 +33,7 @@
 		"dev": "shx rm -rf ./dist && tsx ./scripts/build.ts",
 		"fix": "ksc fix",
 		"lint": "ksc lint",
-		"install:vault": "pnpm build && node scripts/install-medical-plugin.mjs",
+		"install:vault": "pnpm build && node scripts/install-obsyanki-plugin.mjs",
 		"release": "bumpp package.json manifest.json -x 'pnpm build' -c 'Release: %s' --tag '%s'",
 		"test": "pnpm test:unit && pnpm build --no-demo && vitest run",
 		"test:unit": "vitest run --config vitest.unit.config.ts",
@@ -87,10 +87,10 @@
 	},
 	"obsidian": {
 		"author": "gengsta1, based on Yanki by Kitschpatrol",
-		"description": "Sync embedded medical Anki blocks from Obsidian master notes to Anki.",
-		"id": "obsidian-live-to-anki",
+		"description": "Sync embedded Obsyanki blocks from Obsidian notes to Anki.",
+		"id": "obsyanki",
 		"isDesktopOnly": true,
 		"minAppVersion": "1.9.12",
-		"name": "Obsidian Live to Anki"
+		"name": "Obsyanki"
 	}
 }

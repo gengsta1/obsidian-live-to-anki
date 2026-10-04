@@ -1,11 +1,9 @@
-import type YankiPlugin from '../../src/main'
+import type ObsyankiPlugin from '../../src/main'
 import type { AnkiConnection } from './anki'
 
 declare module 'wdio-obsidian-service' {
 	interface InstalledPlugins {
-		'obsidian-live-to-anki': YankiPlugin
-		obsidianLiveToAnki: YankiPlugin
-		yanki: YankiPlugin
+		obsyanki: ObsyankiPlugin
 	}
 }
 

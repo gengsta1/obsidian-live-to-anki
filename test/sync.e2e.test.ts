@@ -17,7 +17,7 @@ test('syncs an added note into a nested deck and preserves existing note IDs', a
 		async ({ app, plugins }): Promise<Record<string, number>> =>
 			Object.fromEntries(
 				await Promise.all(
-					plugins.obsidianLiveToAnki.getWatchedFiles().map(async (file) => {
+					plugins.obsyanki.getWatchedFiles().map(async (file) => {
 						const content = await app.vault.read(file)
 						return [file.path, Number(/^noteId: (\d+)$/mu.exec(content)?.[1])] as const
 					}),
@@ -35,7 +35,7 @@ test('syncs an added note into a nested deck and preserves existing note IDs', a
 	})
 	await expect
 		.poll(async () =>
-			browser.executeObsidian(({ plugins }) => plugins.obsidianLiveToAnki.getWatchedFiles().length),
+			browser.executeObsidian(({ plugins }) => plugins.obsyanki.getWatchedFiles().length),
 		)
 		.toBe(5)
 
