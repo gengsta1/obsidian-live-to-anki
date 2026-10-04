@@ -1,6 +1,6 @@
 {
 	"name": "synki",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "An Obsidian plugin that syncs embedded Synki blocks from Obsidian notes to Anki.",
 	"keywords": [
 		"obsidian",

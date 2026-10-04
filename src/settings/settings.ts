@@ -28,9 +28,39 @@ const FORCE_LEGACY_SETTINGS = false
 
 const RECOMMENDED_ANKI_ADDONS = [
 	{
-		code: '2055492159',
-		name: 'AnkiConnect',
-		reason: 'Required for Synki to create, update, and test cards in Anki.',
+		code: '1374772155',
+		name: 'Image Occlusion Enhanced',
+		reason: 'Create image occlusion cards from screenshots and diagrams.',
+	},
+	{
+		code: '46611790',
+		name: 'Fastbar - with nightmode support',
+		reason: 'Adds faster editor/reviewer buttons with night mode support.',
+	},
+	{
+		code: '24411424',
+		name: 'Customize Keyboard Shortcuts',
+		reason: 'Customize Anki shortcuts for a faster review workflow.',
+	},
+	{
+		code: '1143540799',
+		name: 'Countdown To Events and Exams',
+		reason: 'Show countdowns for exams and study deadlines in Anki.',
+	},
+	{
+		code: '149004221',
+		name: 'Ankimote - remote to control Anki from your phone',
+		reason: 'Control Anki reviews from a phone on the same local network.',
+	},
+	{
+		code: '1771074083',
+		name: 'Review Heatmap',
+		reason: 'Show a calendar heatmap of review activity.',
+	},
+	{
+		code: '1722658993',
+		name: 'Puppy Reinforcement',
+		reason: 'Adds lightweight positive reinforcement during reviews.',
 	},
 ]
 
@@ -824,8 +854,8 @@ export class SynkiPluginSettingTab extends PluginSettingTab {
 					{
 						desc: sanitizeHTMLToDom(
 							html`Install these in Anki via <strong>Tools → Add-ons → Get Add-ons</strong>.
-								Manual install copies the code. Auto install is shown separately because Anki does
-								not expose a safe public install API through AnkiConnect.`,
+								Use <strong>Copy code</strong>, paste the code into Anki, then restart Anki when
+								prompted.`,
 						),
 						name: 'Recommended Anki add-ons',
 						render(setting) {
@@ -851,7 +881,8 @@ export class SynkiPluginSettingTab extends PluginSettingTab {
 									})
 								})
 								.addButton((button) => {
-									button.setButtonText('Auto install')
+									button.setButtonText('Auto install unavailable')
+									button.setDisabled(true)
 									button.onClick(() => {
 										new Notice(
 											sanitizeHTMLToDom(
@@ -1221,7 +1252,9 @@ export class SynkiPluginSettingTab extends PluginSettingTab {
 			new Notice(
 				sanitizeHTMLToDom(
 					html`<strong>Synki:</strong><br />Anki setup test failed:
-						<code>${message}</code>`,
+						<code>${message}</code><br /><br />First step: install AnkiConnect in Anki via
+						<strong>Tools → Add-ons → Get Add-ons</strong>, paste code
+						<code>2055492159</code>, restart Anki, keep Anki open, then run this test again.`,
 				),
 				10_000,
 			)
