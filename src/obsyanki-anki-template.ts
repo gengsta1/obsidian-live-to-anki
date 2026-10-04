@@ -88,7 +88,7 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
 
     <div id="onebyone-controls" class="onebyone-controls" style="display:none;">
         <button class="reveal-button" onclick="revealNextCloze(); event.stopPropagation();">
-            Next point <span class="shortcut">Space / N</span>
+            Next point <span class="shortcut">N</span>
         </button>
         <button class="reveal-button secondary" onclick="revealAllClozes(); event.stopPropagation();">
             Show all
@@ -231,8 +231,6 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
     const card = document.getElementById("obsidian-card");
     const controls = document.getElementById("onebyone-controls");
     const afterAnswer = document.getElementById("after-answer");
-    let oneByOneActive = false;
-    let pendingClozeCount = 0;
 
     if (!textContainer) {
         if (card) {
@@ -292,8 +290,6 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
         });
 
         let nextIndex = 0;
-        oneByOneActive = true;
-        pendingClozeCount = clozes.length;
 
         clozes.forEach(function (cloze) {
             cloze.innerHTML = "[...]";
@@ -316,7 +312,6 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
             clozes[nextIndex].innerHTML = answers[nextIndex];
             clozes[nextIndex].classList.remove("cloze-pending");
             nextIndex += 1;
-            pendingClozeCount = clozes.length - nextIndex;
 
             if (nextIndex >= clozes.length) {
                 if (controls) {
@@ -336,7 +331,6 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
             });
 
             nextIndex = clozes.length;
-            pendingClozeCount = 0;
 
             if (controls) {
                 controls.style.display = "none";
@@ -362,18 +356,11 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
         card.style.visibility = "visible";
     }
 
-    document.addEventListener(
+    window.addEventListener(
         "keydown",
         function (event) {
             const key = event.key.toLowerCase();
             const hasPlainModifier = !event.ctrlKey && !event.altKey && !event.metaKey;
-
-            if ((key === " " || key === "spacebar") && hasPlainModifier && oneByOneActive && pendingClozeCount > 0) {
-                event.preventDefault();
-                event.stopPropagation();
-                window.revealNextCloze();
-                return;
-            }
 
             if (key === "n" && hasPlainModifier) {
                 event.preventDefault();

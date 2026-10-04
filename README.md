@@ -38,7 +38,7 @@ The important differences:
 - **Configurable note type support.** The default setup works with `Cloze_obsidian` and its fields, but the source folders, note type, field list, text field, note type aliases, and field aliases can be changed in the plugin settings.
 - **Two block-sync commands.** Sync only the current note, or sync every note in the configured block-sync folders.
 - **Basic inline Markdown.** `**bold text**` in block fields is sent to Anki as bold HTML.
-- **Review controls for richer cards.** One-by-one cards can reveal clozes with <kbd>Space</kbd> or <kbd>N</kbd>, reveal all clozes with <kbd>,</kbd>, and cycle extra field panels with <kbd>X</kbd>.
+- **Review controls for richer cards.** One-by-one cards can reveal clozes with <kbd>N</kbd>, reveal all clozes with <kbd>,</kbd>, and cycle extra field panels with <kbd>X</kbd>. <kbd>Space</kbd> stays reserved for Anki's normal review flow.
 - **No automatic deletion yet.** Version 0.1 only creates and updates Anki notes. Removing Anki cards automatically from deleted blocks should be added later, after the create/update path is stable.
 
 The original Yanki folder-sync command is still present for reference. The fork-specific command is:
@@ -82,9 +82,10 @@ The original Yanki folder-sync command is still present for reference, but the n
 
 The built-in `Cloze_obsidian` template adds keyboard controls for the answer side:
 
-- <kbd>Space</kbd> or <kbd>N</kbd>: reveal the next hidden cloze when `One by one` is enabled. After all clozes are revealed, <kbd>Space</kbd> returns to Anki's normal grading behavior.
+- <kbd>N</kbd>: reveal the next hidden cloze when `One by one` is enabled.
 - <kbd>,</kbd>: reveal all one-by-one clozes immediately.
 - <kbd>X</kbd>: reveal extra field panels one by one if the card has any extra-field buttons. For example, with three populated extra fields, pressing <kbd>X</kbd> opens panel 1, then panel 2, then panel 3, and the next <kbd>X</kbd> closes them all.
+- <kbd>Space</kbd>: unchanged Anki behavior for showing/grading the card.
 
 The extra buttons are created only for populated fields such as `Definitionen`, `Mechanismus`, `Klinik`, `Dosis`, `Cave`, `Merksprüche`, or `Eigene Prüfungsfragen`. If a card has no populated extra fields, <kbd>X</kbd> has nothing to reveal.
 
