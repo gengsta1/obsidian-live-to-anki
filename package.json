@@ -1,7 +1,7 @@
 {
-	"name": "obsyanki",
+	"name": "synki",
 	"version": "0.1.0",
-	"description": "An Obsidian plugin that syncs embedded Obsyanki blocks from Obsidian notes to Anki.",
+	"description": "An Obsidian plugin that syncs embedded Synki blocks from Obsidian notes to Anki.",
 	"keywords": [
 		"obsidian",
 		"obsidian-md",
@@ -17,7 +17,7 @@
 	"bugs": "",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/gengsta1/obsyanki.git"
+		"url": "git+https://github.com/gengsta1/synki.git"
 	},
 	"license": "MIT",
 	"author": {
@@ -33,7 +33,7 @@
 		"dev": "shx rm -rf ./dist && tsx ./scripts/build.ts",
 		"fix": "ksc fix",
 		"lint": "ksc lint",
-		"install:vault": "pnpm build && node scripts/install-obsyanki-plugin.mjs",
+		"install:vault": "pnpm build && node scripts/install-synki-plugin.mjs",
 		"release": "bumpp package.json manifest.json -x 'pnpm build' -c 'Release: %s' --tag '%s'",
 		"test": "pnpm test:unit && pnpm build --no-demo && vitest run",
 		"test:unit": "vitest run --config vitest.unit.config.ts",
@@ -87,10 +87,10 @@
 	},
 	"obsidian": {
 		"author": "gengsta1, based on Yanki by Kitschpatrol",
-		"description": "Sync embedded Obsyanki blocks from Obsidian notes to Anki.",
-		"id": "obsyanki",
+		"description": "Sync embedded Synki blocks from Obsidian notes to Anki.",
+		"id": "synki",
 		"isDesktopOnly": true,
 		"minAppVersion": "1.9.12",
-		"name": "Obsyanki"
+		"name": "Synki"
 	}
 }

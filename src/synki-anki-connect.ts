@@ -1,19 +1,19 @@
 import { requestUrl } from 'obsidian'
 
-export type ObsyankiConnectSettings = {
+export type SynkiConnectSettings = {
 	host: string
 	key: string | undefined
 	port: number
 }
 
-export type ObsyankiNotePayload = {
+export type SynkiNotePayload = {
 	deckName: string
 	fields: Record<string, string>
 	modelName: string
 	tags: string[]
 }
 
-export type ObsyankiTemplatePayload = {
+export type SynkiTemplatePayload = {
 	back: string
 	css: string
 	front: string
@@ -26,14 +26,14 @@ type AnkiConnectResponse<T> = {
 	result: T
 }
 
-export class ObsyankiConnectClient {
-	private readonly settings: ObsyankiConnectSettings
+export class SynkiConnectClient {
+	private readonly settings: SynkiConnectSettings
 
-	public constructor(settings: ObsyankiConnectSettings) {
+	public constructor(settings: SynkiConnectSettings) {
 		this.settings = settings
 	}
 
-	public async addNote(note: ObsyankiNotePayload): Promise<string> {
+	public async addNote(note: SynkiNotePayload): Promise<string> {
 		await this.createDeck(note.deckName)
 
 		const result = await this.invoke<number>('addNote', {
@@ -51,13 +51,28 @@ export class ObsyankiConnectClient {
 		await this.invoke('createDeck', { deck: deckName })
 	}
 
+	public async deleteDeck(deckName: string): Promise<void> {
+		await this.invoke('deleteDecks', { cardsToo: true, decks: [deckName] })
+	}
+
+	public async deleteNote(noteId: string): Promise<void> {
+		await this.invoke('deleteNotes', { notes: [Number(noteId)] })
+	}
+
 	public async findMissingModelFields(modelName: string, requiredFields: string[]): Promise<string[]> {
 		const modelFields = await this.invoke<string[]>('modelFieldNames', { modelName })
 		const available = new Set(modelFields)
 		return requiredFields.filter((field) => !available.has(field))
 	}
 
-	public async updateModelTemplate(template: ObsyankiTemplatePayload): Promise<void> {
+	public async noteExists(noteId: string): Promise<boolean> {
+		const notes = await this.invoke<Array<{ noteId: number }>>('notesInfo', {
+			notes: [Number(noteId)],
+		})
+		return notes.some((note) => String(note.noteId) === noteId)
+	}
+
+	public async updateModelTemplate(template: SynkiTemplatePayload): Promise<void> {
 		await this.invoke('updateModelTemplates', {
 			model: {
 				name: template.modelName,
@@ -78,7 +93,7 @@ export class ObsyankiConnectClient {
 		})
 	}
 
-	public async updateNote(noteId: string, note: ObsyankiNotePayload): Promise<void> {
+	public async updateNote(noteId: string, note: SynkiNotePayload): Promise<void> {
 		await this.invoke('updateNoteFields', {
 			note: {
 				fields: note.fields,

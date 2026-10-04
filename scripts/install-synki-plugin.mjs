@@ -4,11 +4,11 @@ import process from 'node:process'
 
 const vaultPath = process.argv[2]
 if (vaultPath === undefined) {
-	console.error('Usage: node scripts/install-obsyanki-plugin.mjs <vault-path>')
+	console.error('Usage: node scripts/install-synki-plugin.mjs <vault-path>')
 	process.exit(1)
 }
 
-const pluginDir = join(vaultPath, '.obsidian', 'plugins', 'obsyanki')
+const pluginDir = join(vaultPath, '.obsidian', 'plugins', 'synki')
 mkdirSync(pluginDir, { recursive: true })
 
 for (const file of readdirSync('dist')) {
@@ -18,4 +18,4 @@ for (const file of readdirSync('dist')) {
 	}
 }
 
-console.log(`Installed Obsyanki to ${pluginDir}`)
+console.log(`Installed Synki to ${pluginDir}`)

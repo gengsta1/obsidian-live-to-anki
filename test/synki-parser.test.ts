@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { insertSyncedNoteIds, parseObsyankiDocument, splitTags } from '../src/obsyanki-parser'
+import { insertSyncedNoteIds, parseSynkiDocument, splitTags } from '../src/synki-parser'
 
 const sample = `# Cushing-Syndrom
 
@@ -26,13 +26,13 @@ Tags: medicine example diagnosis
 END
 `
 
-describe('obsyanki parser', () => {
+describe('synki parser', () => {
 	test('splits tags from spaces and commas', () => {
 		expect(splitTags('a b, c a')).toEqual(['a', 'b', 'c'])
 	})
 
-	test('parses the embedded Obsyanki block format', () => {
-		const parsed = parseObsyankiDocument(sample)
+	test('parses the embedded Synki block format', () => {
+		const parsed = parseSynkiDocument(sample)
 
 		expect(parsed.errors).toEqual([])
 		expect(parsed.targetDeck).toBe('Medicine::Diagnoses::Example')
@@ -46,10 +46,10 @@ describe('obsyanki parser', () => {
 	})
 
 	test('reads and writes stable Anki note ids', () => {
-		const withExistingId = parseObsyankiDocument(`${sample}<!--ANKI-NOTE-ID: 1741234567890-->`)
+		const withExistingId = parseSynkiDocument(`${sample}<!--ANKI-NOTE-ID: 1741234567890-->`)
 		expect(withExistingId.cards[0]?.noteId).toBe('1741234567890')
 
-		const parsed = parseObsyankiDocument(sample)
+		const parsed = parseSynkiDocument(sample)
 		const card = parsed.cards[0]
 		expect(card).toBeDefined()
 
@@ -58,7 +58,7 @@ describe('obsyanki parser', () => {
 	})
 
 	test('normalizes common Cloze_obsidian model and field aliases', () => {
-		const parsed = parseObsyankiDocument(`## Anki
+		const parsed = parseSynkiDocument(`## Anki
 TARGET DECK: Medicine::Diagnoses::Example
 
 START

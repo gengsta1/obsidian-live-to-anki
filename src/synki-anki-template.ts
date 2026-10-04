@@ -1,6 +1,6 @@
-export const OBSYANKI_TEMPLATE_NAME = 'Cloze'
+export const SYNKI_TEMPLATE_NAME = 'Cloze'
 
-export const OBSYANKI_FRONT_TEMPLATE = String.raw`<div id="obsidian-card" class="card-shell">
+export const SYNKI_FRONT_TEMPLATE = String.raw`<div id="obsidian-card" class="card-shell">
     <div id="text" class="main-text">
         {{cloze:Text}}
     </div>
@@ -81,7 +81,7 @@ export const OBSYANKI_FRONT_TEMPLATE = String.raw`<div id="obsidian-card" class=
 })();
 </script>`
 
-export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="card-shell" style="visibility:hidden;">
+export const SYNKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="card-shell" style="visibility:hidden;">
     <div id="text" class="main-text">
         {{cloze:Text}}
     </div>
@@ -418,7 +418,7 @@ export const OBSYANKI_BACK_TEMPLATE = String.raw`<div id="obsidian-card" class="
 })();
 </script>`
 
-export const OBSYANKI_STYLING = String.raw`:root {
+export const SYNKI_STYLING = String.raw`:root {
     --bg: #f7f7f7;
     --text: #29292d;
     --bg-dark: #2f2f31;

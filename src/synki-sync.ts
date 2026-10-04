@@ -1,23 +1,23 @@
 import { Notice, TFile } from 'obsidian'
-import type ObsyankiPlugin from './main'
-import { ObsyankiConnectClient, type ObsyankiNotePayload } from './obsyanki-anki-connect'
+import type SynkiPlugin from './main'
+import { SynkiConnectClient, type SynkiNotePayload } from './synki-anki-connect'
 import {
 	CLOZE_OBSIDIAN_FIELDS,
-	DEFAULT_OBSYANKI_PARSER_OPTIONS,
+	DEFAULT_SYNKI_PARSER_OPTIONS,
 	insertSyncedNoteIds,
-	parseObsyankiDocument,
-	type ObsyankiParserOptions,
-	type ParsedObsyankiCardBlock,
-} from './obsyanki-parser'
+	parseSynkiDocument,
+	type SynkiParserOptions,
+	type ParsedSynkiCardBlock,
+} from './synki-parser'
 
-export type ObsyankiSyncFileResult = {
+export type SynkiSyncFileResult = {
 	deckName: null | string
 	filePath: string
 	skipped: number
 	synced: number
 }
 
-export async function syncCurrentObsyankiNote(plugin: ObsyankiPlugin): Promise<void> {
+export async function syncCurrentSynkiNote(plugin: SynkiPlugin): Promise<void> {
 	try {
 		const file = plugin.app.workspace.getActiveFile()
 		if (file === null) {
@@ -25,17 +25,17 @@ export async function syncCurrentObsyankiNote(plugin: ObsyankiPlugin): Promise<v
 			return
 		}
 
-		await syncObsyankiFile(plugin, file, true)
+		await syncSynkiFile(plugin, file, true)
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
-		console.error('Obsyanki sync failed', error)
-		new Notice(`Obsyanki sync failed: ${message}`, 10_000)
+		console.error('Synki sync failed', error)
+		new Notice(`Synki sync failed: ${message}`, 10_000)
 	}
 }
 
-export async function syncMainNotesObsyanki(plugin: ObsyankiPlugin): Promise<void> {
+export async function syncMainNotesSynki(plugin: SynkiPlugin): Promise<void> {
 	try {
-		const folders = getObsyankiFolders(plugin)
+		const folders = getSynkiFolders(plugin)
 		const files = plugin.app.vault
 			.getMarkdownFiles()
 			.filter((file) => folders.some((folder) => isFileInFolder(file.path, folder)))
@@ -45,7 +45,7 @@ export async function syncMainNotesObsyanki(plugin: ObsyankiPlugin): Promise<voi
 		let touchedFiles = 0
 
 		for (const file of files) {
-			const result = await syncObsyankiFile(plugin, file)
+			const result = await syncSynkiFile(plugin, file)
 			synced += result.synced
 			skipped += result.skipped
 			if (result.synced > 0 || result.skipped > 0) {
@@ -54,11 +54,11 @@ export async function syncMainNotesObsyanki(plugin: ObsyankiPlugin): Promise<voi
 		}
 
 		new Notice(
-			`Obsyanki sync: ${synced} note${synced === 1 ? '' : 's'} synced from ${folders.length} folder${folders.length === 1 ? '' : 's'}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
+			`Synki sync: ${synced} note${synced === 1 ? '' : 's'} synced from ${folders.length} folder${folders.length === 1 ? '' : 's'}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
 			10_000,
 		)
 
-		console.info('Obsyanki Main Notes sync complete', {
+		console.info('Synki Main Notes sync complete', {
 			filesScanned: files.length,
 			skipped,
 			synced,
@@ -66,16 +66,16 @@ export async function syncMainNotesObsyanki(plugin: ObsyankiPlugin): Promise<voi
 		})
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
-		console.error('Obsyanki Main Notes sync failed', error)
-		new Notice(`Obsyanki sync failed: ${message}`, 10_000)
+		console.error('Synki Main Notes sync failed', error)
+		new Notice(`Synki sync failed: ${message}`, 10_000)
 	}
 }
 
-export async function syncObsyankiFile(
-	plugin: ObsyankiPlugin,
+export async function syncSynkiFile(
+	plugin: SynkiPlugin,
 	file: TFile,
 	showSuccessNotice = false,
-): Promise<ObsyankiSyncFileResult> {
+): Promise<SynkiSyncFileResult> {
 	if (file.extension !== 'md') {
 		return emptyResult(file.path)
 	}
@@ -85,10 +85,10 @@ export async function syncObsyankiFile(
 		return emptyResult(file.path)
 	}
 
-	const options = getObsyankiParserOptions(plugin)
-	const parsed = parseObsyankiDocument(markdown, options)
+	const options = getSynkiParserOptions(plugin)
+	const parsed = parseSynkiDocument(markdown, options)
 	if (parsed.errors.length > 0) {
-		console.warn('Obsyanki parser skipped malformed content', {
+		console.warn('Synki parser skipped malformed content', {
 			errors: parsed.errors,
 			path: file.path,
 		})
@@ -98,8 +98,8 @@ export async function syncObsyankiFile(
 		return emptyResult(file.path)
 	}
 
-	const client = new ObsyankiConnectClient(plugin.settings.ankiConnect)
-	const synced: { card: ParsedObsyankiCardBlock; noteId: string }[] = []
+	const client = new SynkiConnectClient(plugin.settings.ankiConnect)
+	const synced: { card: ParsedSynkiCardBlock; noteId: string }[] = []
 	let skipped = 0
 
 	for (const card of parsed.cards) {
@@ -116,7 +116,7 @@ export async function syncObsyankiFile(
 				throw new Error(`Model '${modelName}' lacks field '${missing[0]}'.`)
 			}
 
-			const payload: ObsyankiNotePayload = {
+			const payload: SynkiNotePayload = {
 				deckName: parsed.targetDeck,
 				fields: renderFieldsForAnki(card.fields),
 				modelName,
@@ -132,7 +132,7 @@ export async function syncObsyankiFile(
 			}
 		} catch (error) {
 			skipped += 1
-			console.warn('Obsyanki card skipped', {
+			console.warn('Synki card skipped', {
 				error,
 				modelName,
 				path: file.path,
@@ -157,7 +157,7 @@ export async function syncObsyankiFile(
 		}
 
 		new Notice(
-			`Obsyanki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced to ${parsed.targetDeck}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
+			`Synki sync: ${synced.length} note${synced.length === 1 ? '' : 's'} synced to ${parsed.targetDeck}${skipped > 0 ? ` (${skipped} skipped)` : ''}.`,
 		)
 	}
 
@@ -169,31 +169,31 @@ export async function syncObsyankiFile(
 	}
 }
 
-function getObsyankiFolders(plugin: ObsyankiPlugin): string[] {
-	const folders = plugin.settings.obsyanki.folders
+function getSynkiFolders(plugin: SynkiPlugin): string[] {
+	const folders = plugin.settings.synki.folders
 		.map((folder) => folder.trim().replaceAll(/\/+$/gu, ''))
 		.filter(Boolean)
 	return folders.length === 0 ? ['6 - Main Notes'] : folders
 }
 
-function getObsyankiParserOptions(plugin: ObsyankiPlugin): ObsyankiParserOptions {
-	const fields = splitLines(plugin.settings.obsyanki.fields)
+function getSynkiParserOptions(plugin: SynkiPlugin): SynkiParserOptions {
+	const fields = splitLines(plugin.settings.synki.fields)
 	return {
 		defaultModelName:
-			plugin.settings.obsyanki.defaultModelName.trim() ||
-			DEFAULT_OBSYANKI_PARSER_OPTIONS.defaultModelName,
+			plugin.settings.synki.defaultModelName.trim() ||
+			DEFAULT_SYNKI_PARSER_OPTIONS.defaultModelName,
 		fieldAliases: {
-			...DEFAULT_OBSYANKI_PARSER_OPTIONS.fieldAliases,
-			...parseAliasMap(plugin.settings.obsyanki.fieldAliases),
+			...DEFAULT_SYNKI_PARSER_OPTIONS.fieldAliases,
+			...parseAliasMap(plugin.settings.synki.fieldAliases),
 		},
 		fields: fields.length > 0 ? fields : CLOZE_OBSIDIAN_FIELDS,
 		modelAliases: {
-			...DEFAULT_OBSYANKI_PARSER_OPTIONS.modelAliases,
-			...parseAliasMap(plugin.settings.obsyanki.modelAliases),
+			...DEFAULT_SYNKI_PARSER_OPTIONS.modelAliases,
+			...parseAliasMap(plugin.settings.synki.modelAliases),
 		},
 		textFieldName:
-			plugin.settings.obsyanki.textFieldName.trim() ||
-			DEFAULT_OBSYANKI_PARSER_OPTIONS.textFieldName,
+			plugin.settings.synki.textFieldName.trim() ||
+			DEFAULT_SYNKI_PARSER_OPTIONS.textFieldName,
 	}
 }
 
@@ -240,7 +240,7 @@ function splitLines(input: string): string[] {
 		.filter(Boolean)
 }
 
-function emptyResult(filePath: string): ObsyankiSyncFileResult {
+function emptyResult(filePath: string): SynkiSyncFileResult {
 	return {
 		deckName: null,
 		filePath,

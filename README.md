@@ -1,11 +1,11 @@
 <!-- title({titleCase: true, postfix: " Plugin"}) -->
 
-# Obsyanki Plugin
+# Synki Plugin
 
 <!-- /title -->
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/license/mit)
-[![CI](https://github.com/gengsta1/obsyanki/actions/workflows/ci.yml/badge.svg)](https://github.com/gengsta1/obsyanki/actions/workflows/ci.yml)
+[![CI](https://github.com/gengsta1/synki/actions/workflows/ci.yml/badge.svg)](https://github.com/gengsta1/synki/actions/workflows/ci.yml)
 
 <!-- /badges -->
 
@@ -44,8 +44,8 @@ The important differences:
 The original Yanki folder-sync command is still present for reference. The fork-specific command is:
 
 ```text
-Obsyanki: Sync this note with Obsyanki
-Obsyanki: Sync all Obsyanki folders to Anki
+Synki: Sync this note with Synki
+Synki: Sync all Synki folders to Anki
 ```
 
 ## Live Anki block format
@@ -73,7 +73,7 @@ Tags: diagnosis
 END
 ```
 
-Run `Obsyanki: Sync this note with Obsyanki` for the active note, or `Obsyanki: Sync all Obsyanki folders to Anki` for all configured block-sync folders.
+Run `Synki: Sync this note with Synki` for the active note, or `Synki: Sync all Synki folders to Anki` for all configured block-sync folders.
 New cards get a stable `<!--ANKI-NOTE-ID: ...-->` comment after `END`, so later syncs update the same Anki note instead of creating duplicates.
 
 The original Yanki folder-sync command is still present for reference, but the new block workflow uses `TARGET DECK` directly instead of deriving decks from folders.
@@ -91,9 +91,9 @@ The extra buttons are created only for populated fields such as `Definitionen`, 
 
 ## Configurable block settings
 
-Open the plugin settings and use the **Obsyanki blocks** section to customize the workflow:
+Open the plugin settings and use the **Synki blocks** section to customize the workflow:
 
-- **Obsyanki folders**: folders scanned by the all-notes command.
+- **Synki folders**: folders scanned by the all-notes command.
 - **Default note type**: the real Anki note type used for shorthand aliases.
 - **Fields**: one Anki field per line.
 - **Text field**: the field that must contain the cloze text.
@@ -104,7 +104,7 @@ This makes the workflow usable outside medicine: rename fields, change the note 
 
 ## Upstream Yanki documentation
 
-The rest of this README is mostly inherited from upstream Yanki. It documents Obsyanki's original folder-based sync behavior. The fork-specific behavior is described above.
+The rest of this README is mostly inherited from upstream Yanki. It documents Synki's original folder-based sync behavior. The fork-specific behavior is described above.
 
 <!-- toc({ depth: 2 }) -->
 
@@ -163,7 +163,7 @@ The primary novelty of its approach is in how Markdown is translated into Anki n
 
 4. **Sync**
 
-   Initiate a sync from Obsidian to Anki using the `Obsyanki: Sync flashcard notes to Anki` command. You can also trigger a sync manually via the button in the Obsyanki settings tab.
+   Initiate a sync from Obsidian to Anki using the `Synki: Sync flashcard notes to Anki` command. You can also trigger a sync manually via the button in the Synki settings tab.
 
 5. **Study**
 
@@ -393,7 +393,7 @@ _Warning: If you delete one of several implicitly numbered clozes (e.g. `~~hidde
 
 The Yanki plugin provides a single command, which works as advertised:
 
-**`Obsyanki: Sync flashcard notes to Anki`**
+**`Synki: Sync flashcard notes to Anki`**
 
 ### Settings
 
@@ -704,7 +704,7 @@ _Technically_ nothing's stopping you from making edits in Anki, but any changes 
 
 Not necessarily. Yanki features an auto-sync mode which detects changes automatically and trigger a sync. While this feature technically works, it is _not recommended_ for general use since it can make it too easy to lose learning progress if you temporarily delete a note or move it out of the folders that Yanki tracks.
 
-For those who dare, it can be enabled in the "advanced" section of Obsyanki's settings page via the [Automatic sync](#automatic-sync) toggle.
+For those who dare, it can be enabled in the "advanced" section of Synki's settings page via the [Automatic sync](#automatic-sync) toggle.
 
 ### Can I embed images in my notes?
 
@@ -836,7 +836,7 @@ Yanki does _not_ support this scenario for the notes / cards it manages — it 
 
 ### Can I mix regular Anki note syntax into my Markdown?
 
-No. "Native" Anki syntax like the `{{c1::...` cloze markup cannot coexist peacefully with Obsyanki's Markdown-style notes. And in rare cases, doing this can cause sync errors.
+No. "Native" Anki syntax like the `{{c1::...` cloze markup cannot coexist peacefully with Synki's Markdown-style notes. And in rare cases, doing this can cause sync errors.
 
 ### I'm stuck on an old version of Obsidian, can I still use Yanki?
 

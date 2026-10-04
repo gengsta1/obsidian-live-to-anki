@@ -1,9 +1,9 @@
 import type { TAbstractFile } from 'obsidian'
 import type { FetchAdapter, RenameFilesOptions, SyncFilesOptions } from 'yanki'
 import escapeStringRegexp from 'escape-string-regexp'
-import type { ObsyankiPluginSettings } from './settings/settings'
+import type { SynkiPluginSettings } from './settings/settings'
 import type { CommonProperties } from './utilities'
-import { getObsyankiPluginDefaultSettings, ObsyankiPluginSettingTab } from './settings/settings'
+import { getSynkiPluginDefaultSettings, SynkiPluginSettingTab } from './settings/settings'
 import {
 	arraysEqual,
 	formatRenameResult,
@@ -33,13 +33,13 @@ import {
 	Vault,
 } from 'obsidian'
 import { renameFiles, syncFiles } from 'yanki'
-import { syncCurrentObsyankiNote, syncMainNotesObsyanki, syncObsyankiFile } from './obsyanki-sync'
+import { syncCurrentSynkiNote, syncMainNotesSynki, syncSynkiFile } from './synki-sync'
 
 const DRIVE_LETTER_REGEX = /^[A-Z]:/iv
 
-export default class ObsyankiPlugin extends Plugin {
-	public override settings: ObsyankiPluginSettings = getObsyankiPluginDefaultSettings(this.app)
-	private readonly settingsTab: ObsyankiPluginSettingTab = new ObsyankiPluginSettingTab(this.app, this)
+export default class SynkiPlugin extends Plugin {
+	public override settings: SynkiPluginSettings = getSynkiPluginDefaultSettings(this.app)
+	private readonly settingsTab: SynkiPluginSettingTab = new SynkiPluginSettingTab(this.app, this)
 
 	// Arrow-function field so `this.openSettingsTab` can be passed as a callback
 	// without .bind(this); declared before the debounced fields below because
@@ -70,7 +70,7 @@ export default class ObsyankiPlugin extends Plugin {
 				new Notice(
 					sanitizeHtmlToDomWithFunction(
 						html`<strong>Anki sync failed:</strong><br />No flashcard folders to sync. You can
-							specify flashcard folders in Obsyanki's <a class="settings">settings tab</a>.`,
+							specify flashcard folders in Synki's <a class="settings">settings tab</a>.`,
 						{ settings: this.openSettingsTab },
 					),
 				)
@@ -87,7 +87,7 @@ export default class ObsyankiPlugin extends Plugin {
 				new Notice(
 					sanitizeHtmlToDomWithFunction(
 						html`<strong>Anki sync failed:</strong><br />No flashcard notes found. Check your
-							flashcard folders in Obsyanki's <a class="settings">settings tab</a>.`,
+							flashcard folders in Synki's <a class="settings">settings tab</a>.`,
 						{ settings: this.openSettingsTab },
 					),
 				)
@@ -129,7 +129,7 @@ export default class ObsyankiPlugin extends Plugin {
 		} catch (error) {
 			this.settings.stats.sync.errors++
 
-			// Connection errors are caught in the Obsyanki library, and surfaced to Obsidian in the sync report
+			// Connection errors are caught in the Synki library, and surfaced to Obsidian in the sync report
 			// by detecting `ankiUnreachable` sync actions
 
 			// Always notice on weird errors
@@ -167,7 +167,7 @@ export default class ObsyankiPlugin extends Plugin {
 				new Notice(
 					sanitizeHtmlToDomWithFunction(
 						html`<strong>Anki note file rename:</strong><br />No flashcard notes found to rename.
-							Check your flashcard folders in Obsyanki's <a class="settings">settings tab</a>.`,
+							Check your flashcard folders in Synki's <a class="settings">settings tab</a>.`,
 						{ settings: this.openSettingsTab },
 					),
 				)
@@ -186,7 +186,7 @@ export default class ObsyankiPlugin extends Plugin {
 		}
 	}, this.settings.manageFilenames.autoRenameDebounceIntervalMs)
 
-	// ── Obsyanki file and fetch adapters ─────────────────────────────
+	// ── Synki file and fetch adapters ─────────────────────────────
 
 	fetchAdapter = async (
 		input: Parameters<FetchAdapter>[0],
@@ -317,9 +317,9 @@ export default class ObsyankiPlugin extends Plugin {
 
 	// Typed override
 	// eslint-disable-next-line ts/no-restricted-types -- override matches the Plugin base class signature, which uses `null`
-	override async loadData(): Promise<null | ObsyankiPluginSettings> {
+	override async loadData(): Promise<null | SynkiPluginSettings> {
 		// eslint-disable-next-line ts/no-restricted-types -- `null` matches the base class loadData() signature
-		const settings = (await super.loadData()) as null | ObsyankiPluginSettings
+		const settings = (await super.loadData()) as null | SynkiPluginSettings
 
 		if (settings === null) {
 			return settings
@@ -348,7 +348,7 @@ export default class ObsyankiPlugin extends Plugin {
 		// Merge any saved settings into defaults
 		// TODO detect change and return boolean to skip subsequent writes?
 		const savedSettings = await this.loadData()
-		const defaultSettings = getObsyankiPluginDefaultSettings(this.app)
+		const defaultSettings = getSynkiPluginDefaultSettings(this.app)
 		this.settings = {
 			...defaultSettings,
 			...savedSettings,
@@ -360,9 +360,9 @@ export default class ObsyankiPlugin extends Plugin {
 				...defaultSettings.manageFilenames,
 				...savedSettings?.manageFilenames,
 			},
-			obsyanki: {
-				...defaultSettings.obsyanki,
-				...savedSettings?.obsyanki,
+			synki: {
+				...defaultSettings.synki,
+				...savedSettings?.synki,
 			},
 			stats: {
 				...defaultSettings.stats,
@@ -387,7 +387,7 @@ export default class ObsyankiPlugin extends Plugin {
 	override async onExternalSettingsChange() {
 		if (this.settings.verboseNotices) {
 			// TODO when is this actually called?
-			new Notice('Obsyanki external settings change detected')
+			new Notice('Synki external settings change detected')
 		}
 
 		const originalSettings = structuredClone(this.settings)
@@ -425,11 +425,11 @@ export default class ObsyankiPlugin extends Plugin {
 		// TODO check if this is necessary first
 		await this.saveSettings()
 		this.addSettingTab(this.settingsTab)
-		this.addRibbonIcon('file-check', 'Sync this note with Obsyanki', () => {
-			void syncCurrentObsyankiNote(this)
+		this.addRibbonIcon('file-check', 'Sync this note with Synki', () => {
+			void syncCurrentSynkiNote(this)
 		})
-		this.addRibbonIcon('folder-sync', 'Sync all Obsyanki folders to Anki', () => {
-			void syncMainNotesObsyanki(this)
+		this.addRibbonIcon('folder-sync', 'Sync all Synki folders to Anki', () => {
+			void syncMainNotesSynki(this)
 		})
 
 		this.addCommand({
@@ -447,18 +447,18 @@ export default class ObsyankiPlugin extends Plugin {
 
 		this.addCommand({
 			callback: () => {
-				void syncCurrentObsyankiNote(this)
+				void syncCurrentSynkiNote(this)
 			},
-			id: 'sync-obsyanki-blocks',
-			name: 'Sync this note with Obsyanki',
+			id: 'sync-synki-blocks',
+			name: 'Sync this note with Synki',
 		})
 
 		this.addCommand({
 			callback: () => {
-				void syncMainNotesObsyanki(this)
+				void syncMainNotesSynki(this)
 			},
-			id: 'sync-main-notes-obsyanki-blocks',
-			name: 'Sync all Obsyanki folders to Anki',
+			id: 'sync-main-notes-synki-blocks',
+			name: 'Sync all Synki folders to Anki',
 		})
 
 		// Spot any changes since last session
@@ -523,7 +523,7 @@ export default class ObsyankiPlugin extends Plugin {
 											${
 												this.settings.sync.autoSyncEnabled
 													? ''
-													: '<br /><br />Run the <a class="sync">Obsyanki Sync</a> command to remove the folder’s notes from Anki.</a>'
+													: '<br /><br />Run the <a class="sync">Synki Sync</a> command to remove the folder’s notes from Anki.</a>'
 											}`,
 										{
 											settings: this.openSettingsTab,
@@ -554,7 +554,7 @@ export default class ObsyankiPlugin extends Plugin {
 											${
 												this.settings.sync.autoSyncEnabled
 													? ''
-													: '<br /><br />Run the <a class="sync">Obsyanki Sync</a> command to sync the folder’s notes to Anki.</a>'
+													: '<br /><br />Run the <a class="sync">Synki Sync</a> command to sync the folder’s notes to Anki.</a>'
 											}`,
 										{
 											settings: this.openSettingsTab,
@@ -585,7 +585,7 @@ export default class ObsyankiPlugin extends Plugin {
 	 * Certain settings changes should trigger a sync to Anki, (but only fires if
 	 * auto sync is enabled).
 	 */
-	public async settingsChangeSyncCheck(previousSettings: ObsyankiPluginSettings) {
+	public async settingsChangeSyncCheck(previousSettings: SynkiPluginSettings) {
 		// This could be more concise...
 
 		// Local file names have no effect on Anki's database,
@@ -632,16 +632,16 @@ export default class ObsyankiPlugin extends Plugin {
 		return this.app.vault.getFiles().map((file) => path.join(vaultBasePath, file.path))
 	}
 
-	// ── Obsyanki library options ──────────────────────────────────────
+	// ── Synki library options ──────────────────────────────────────
 
 	/**
-	 * Translates ObsyankiPluginSettings into an options object for use in the Yanki
+	 * Translates SynkiPluginSettings into an options object for use in the Yanki
 	 * library's `renameFiles` function
 	 *
 	 * Overrides some parameters to improve performance and avoid unnecessary
 	 * operations.
 	 */
-	private getRenameFilesOptions(settings: ObsyankiPluginSettings): RenameFilesOptions {
+	private getRenameFilesOptions(settings: SynkiPluginSettings): RenameFilesOptions {
 		return {
 			...this.getSharedOptions(settings),
 			allFilePaths: [],
@@ -650,14 +650,14 @@ export default class ObsyankiPlugin extends Plugin {
 	}
 
 	/**
-	 * Translates ObsyankiPluginSettings into a shared options object for use in
-	 * Obsyanki library functions
+	 * Translates SynkiPluginSettings into a shared options object for use in
+	 * Synki library functions
 	 *
 	 * @returns Options object with fields common to both RenameFilesOptions and
 	 *   SyncFilesOptions
 	 */
 	private getSharedOptions(
-		settings: ObsyankiPluginSettings,
+		settings: SynkiPluginSettings,
 	): CommonProperties<RenameFilesOptions, SyncFilesOptions> {
 		return {
 			allFilePaths: [],
@@ -686,10 +686,10 @@ export default class ObsyankiPlugin extends Plugin {
 	}
 
 	/**
-	 * Translates ObsyankiPluginSettings into an options object for use in the Yanki
+	 * Translates SynkiPluginSettings into an options object for use in the Yanki
 	 * library's `syncFiles` function
 	 */
-	private getSyncFilesOptions(settings: ObsyankiPluginSettings): SyncFilesOptions {
+	private getSyncFilesOptions(settings: SynkiPluginSettings): SyncFilesOptions {
 		return {
 			...this.getSharedOptions(settings),
 			allFilePaths: this.getAllFilePaths(),
@@ -766,7 +766,7 @@ export default class ObsyankiPlugin extends Plugin {
 			fileOrFolder instanceof TFile &&
 			fileOrFolder.extension === 'md'
 		) {
-			await syncObsyankiFile(this, fileOrFolder)
+			await syncSynkiFile(this, fileOrFolder)
 		}
 
 		if (!this.isInsideWatchedFolders(fileOrFolder)) {

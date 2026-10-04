@@ -1,6 +1,6 @@
 import type { App, ButtonComponent } from 'obsidian'
+import moment from 'moment'
 import {
-	moment,
 	Notice,
 	PluginSettingTab,
 	requireApiVersion,
@@ -9,15 +9,15 @@ import {
 } from 'obsidian'
 import prettyMilliseconds from 'pretty-ms'
 import { hostAndPortToUrl, urlToHostAndPort } from 'yanki'
-import type ObsyankiPlugin from '../main'
+import type SynkiPlugin from '../main'
 import { FolderSuggest } from '../extensions/folder-suggest'
-import { ObsyankiConnectClient } from '../obsyanki-anki-connect'
+import { SynkiConnectClient } from '../synki-anki-connect'
 import {
-	OBSYANKI_BACK_TEMPLATE,
-	OBSYANKI_FRONT_TEMPLATE,
-	OBSYANKI_STYLING,
-	OBSYANKI_TEMPLATE_NAME,
-} from '../obsyanki-anki-template'
+	SYNKI_BACK_TEMPLATE,
+	SYNKI_FRONT_TEMPLATE,
+	SYNKI_STYLING,
+	SYNKI_TEMPLATE_NAME,
+} from '../synki-anki-template'
 import { capitalize, html, sanitizeNamespace, validateNamespace } from '../utilities'
 
 /**
@@ -26,12 +26,20 @@ import { capitalize, html, sanitizeNamespace, validateNamespace } from '../utili
  */
 const FORCE_LEGACY_SETTINGS = false
 
+const RECOMMENDED_ANKI_ADDONS = [
+	{
+		code: '2055492159',
+		name: 'AnkiConnect',
+		reason: 'Required for Synki to create, update, and test cards in Anki.',
+	},
+]
+
 /**
  * Structurally compatible with Obsidian 1.13's `SettingDefinitionRender`, but
  * defined locally so the code also type-checks against pre-1.13 typings, like
  * the ones the Obsidian plugin review bot lints with.
  */
-type ObsyankiSettingDefinition = {
+type SynkiSettingDefinition = {
 	desc?: DocumentFragment | string
 	name: string
 	render: (setting: Setting) => void
@@ -39,13 +47,13 @@ type ObsyankiSettingDefinition = {
 	visible?: (() => boolean) | boolean
 }
 
-type ObsyankiSettingGroup = {
+type SynkiSettingGroup = {
 	heading: string
-	items: ObsyankiSettingDefinition[]
+	items: SynkiSettingDefinition[]
 	type: 'group'
 }
 
-export type ObsyankiPluginSettings = {
+export type SynkiPluginSettings = {
 	ankiConnect: {
 		host: string
 		key: string | undefined
@@ -59,7 +67,7 @@ export type ObsyankiPluginSettings = {
 		maxLength: number
 		mode: 'prompt' | 'response'
 	}
-	obsyanki: {
+	synki: {
 		defaultModelName: string
 		fieldAliases: string
 		fields: string
@@ -99,7 +107,7 @@ export type ObsyankiPluginSettings = {
 /**
  * Default plugin settings TODO bind instead?
  */
-export function getObsyankiPluginDefaultSettings(app: App): ObsyankiPluginSettings {
+export function getSynkiPluginDefaultSettings(app: App): SynkiPluginSettings {
 	return {
 		ankiConnect: {
 			host: 'http://localhost',
@@ -115,7 +123,7 @@ export function getObsyankiPluginDefaultSettings(app: App): ObsyankiPluginSettin
 			maxLength: 60,
 			mode: 'prompt',
 		},
-		obsyanki: {
+		synki: {
 			defaultModelName: 'Cloze_obsidian',
 			fieldAliases: [
 				'Text=Text',
@@ -147,12 +155,12 @@ export function getObsyankiPluginDefaultSettings(app: App): ObsyankiPluginSettin
 			modelAliases: ['Cloze=Cloze_obsidian'].join('\n'),
 			textFieldName: 'Text',
 		},
-		// Defaults to vault ID the first time Obsyanki is run on a vault, but it may NOT be the actual current vault ID, e.g. when syncing is involved
+		// Defaults to vault ID the first time Synki is run on a vault, but it may NOT be the actual current vault ID, e.g. when syncing is involved
 		// Using vault ID instead of name is more robust to vault renaming
 		// But why is the vault ID API private?
 		// https://forum.obsidian.md/t/is-there-any-way-to-derive-the-vault-id-from-the-vault-directory/5573/4
 		// Warning: changing the static components of this string can result in data loss...
-		namespace: `Obsyanki Obsidian - Vault ID ${sanitizeNamespace(app.appId)}`,
+		namespace: `Synki Obsidian - Vault ID ${sanitizeNamespace(app.appId)}`,
 		showAdvancedSettings: false,
 		stats: {
 			sync: {
@@ -182,13 +190,13 @@ export function getObsyankiPluginDefaultSettings(app: App): ObsyankiPluginSettin
 	}
 }
 
-export class ObsyankiPluginSettingTab extends PluginSettingTab {
-	override plugin: ObsyankiPlugin
+export class SynkiPluginSettingTab extends PluginSettingTab {
+	override plugin: SynkiPlugin
 	private folderAddSetting?: Setting
-	private initialSettings: ObsyankiPluginSettings = getObsyankiPluginDefaultSettings(this.app)
+	private initialSettings: SynkiPluginSettings = getSynkiPluginDefaultSettings(this.app)
 	private isSettingsOpen = false
 
-	constructor(app: App, plugin: ObsyankiPlugin) {
+	constructor(app: App, plugin: SynkiPlugin) {
 		super(app, plugin)
 		this.plugin = plugin
 	}
@@ -198,7 +206,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 		this.renderLegacySettings()
 	}
 
-	override getSettingDefinitions(): ObsyankiSettingGroup[] {
+	override getSettingDefinitions(): SynkiSettingGroup[] {
 		// eslint-disable-next-line ts/no-unnecessary-condition -- `FORCE_LEGACY_SETTINGS` is a hard-coded debug flag.
 		if (FORCE_LEGACY_SETTINGS) {
 			// With no definitions, Obsidian 1.13+ falls back to the `display()` code path.
@@ -241,26 +249,26 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 		this.renderLegacySettings()
 	}
 
-	private getSettingGroups(): ObsyankiSettingGroup[] {
+	private getSettingGroups(): SynkiSettingGroup[] {
 		const advancedVisible = () => this.plugin.settings.showAdvancedSettings
 		const folders = this.plugin.settings.folders.length === 0 ? [''] : this.plugin.settings.folders
-		const obsyankiFolders =
-			this.plugin.settings.obsyanki.folders.length === 0 ? [''] : this.plugin.settings.obsyanki.folders
+		const synkiFolders =
+			this.plugin.settings.synki.folders.length === 0 ? [''] : this.plugin.settings.synki.folders
 		const { latestSyncTime } = this.plugin.settings.stats.sync
 		const syncTime = latestSyncTime === undefined ? 'Never' : moment.unix(latestSyncTime).fromNow()
 		const { auto, duration, errors, invalid, manual } = this.plugin.settings.stats.sync
 		const { ankiUnreachable, created, deleted, matched, unchanged, updated } =
 			this.plugin.settings.stats.sync.notes
 
-		const folderItems: ObsyankiSettingDefinition[] = [
+		const folderItems: SynkiSettingDefinition[] = [
 			{
 				desc: sanitizeHTMLToDom(
-					html`Obsyanki will sync notes in the folders specified to Anki. Folder syncing is always
+					html`Synki will sync notes in the folders specified to Anki. Folder syncing is always
 						recursive, and Anki decks will be created to match the hierarchy of your Obsidian
 						folders. See the
 						<a
 							href="https://github.com/kitschpatrol/yanki-obsidian?tab=readme-ov-file#markdown-note-types"
-							>Obsyanki documentation</a
+							>Synki documentation</a
 						>
 						for details on how to structure the content of your flashcard notes.`,
 				),
@@ -363,10 +371,10 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 			},
 		)
 
-		const obsyankiFolderItems: ObsyankiSettingDefinition[] = [
+		const synkiFolderItems: SynkiSettingDefinition[] = [
 			{
 				desc: sanitizeHTMLToDom(
-					html`These folders are scanned by the <strong>Sync all Obsyanki folders to Anki</strong>
+					html`These folders are scanned by the <strong>Sync all Synki folders to Anki</strong>
 						button. Notes without a <code>## Anki</code> section are ignored.`,
 				),
 				name: '',
@@ -377,12 +385,12 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 			},
 		]
 
-		for (const index of obsyankiFolders.keys()) {
-			obsyankiFolderItems.push({
-				name: `Obsyanki folder ${String(index + 1)}`,
+		for (const index of synkiFolders.keys()) {
+			synkiFolderItems.push({
+				name: `Synki folder ${String(index + 1)}`,
 				render: (setting) => {
-					if (this.plugin.settings.obsyanki.folders.length === 0) {
-						this.plugin.settings.obsyanki.folders.push('')
+					if (this.plugin.settings.synki.folders.length === 0) {
+						this.plugin.settings.synki.folders.push('')
 					}
 
 					setting
@@ -390,9 +398,9 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 							new FolderSuggest(search.inputEl, this.app)
 							search
 								.setPlaceholder('Select a folder')
-								.setValue(this.plugin.settings.obsyanki.folders[index] ?? '')
+								.setValue(this.plugin.settings.synki.folders[index] ?? '')
 								.onChange((value) => {
-									this.plugin.settings.obsyanki.folders[index] = value
+									this.plugin.settings.synki.folders[index] = value
 								})
 
 							search.inputEl.addEventListener('blur', () => {
@@ -409,7 +417,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 								.setIcon('cross')
 								.setTooltip('Delete')
 								.onClick(async () => {
-									this.plugin.settings.obsyanki.folders.splice(index, 1)
+									this.plugin.settings.synki.folders.splice(index, 1)
 									await this.plugin.saveSettings()
 									this.render()
 								})
@@ -419,16 +427,16 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 			})
 		}
 
-		obsyankiFolderItems.push(
+		synkiFolderItems.push(
 			{
-				desc: 'Add another source folder for embedded Obsyanki blocks.',
-				name: 'Add Obsyanki folder',
+				desc: 'Add another source folder for embedded Synki blocks.',
+				name: 'Add Synki folder',
 				render: (setting) => {
 					setting
 						.setName('')
 						.addButton((button) => {
 							button.setButtonText('Add folder').onClick(async () => {
-								this.plugin.settings.obsyanki.folders.push('')
+								this.plugin.settings.synki.folders.push('')
 								await this.plugin.saveSettings()
 								this.render()
 							})
@@ -443,9 +451,9 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 					setting.addText((text) => {
 						text
 							.setPlaceholder('Cloze_obsidian')
-							.setValue(this.plugin.settings.obsyanki.defaultModelName)
+							.setValue(this.plugin.settings.synki.defaultModelName)
 							.onChange((value) => {
-								this.plugin.settings.obsyanki.defaultModelName = value.trim()
+								this.plugin.settings.synki.defaultModelName = value.trim()
 							})
 						text.inputEl.addEventListener('blur', () => {
 							void this.plugin.saveSettings()
@@ -460,9 +468,9 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 					setting.addTextArea((text) => {
 						text
 							.setPlaceholder('Text\nBack Extra')
-							.setValue(this.plugin.settings.obsyanki.fields)
+							.setValue(this.plugin.settings.synki.fields)
 							.onChange((value) => {
-								this.plugin.settings.obsyanki.fields = value
+								this.plugin.settings.synki.fields = value
 							})
 						text.inputEl.rows = 8
 						text.inputEl.addEventListener('blur', () => {
@@ -478,9 +486,9 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 					setting.addText((text) => {
 						text
 							.setPlaceholder('Text')
-							.setValue(this.plugin.settings.obsyanki.textFieldName)
+							.setValue(this.plugin.settings.synki.textFieldName)
 							.onChange((value) => {
-								this.plugin.settings.obsyanki.textFieldName = value.trim()
+								this.plugin.settings.synki.textFieldName = value.trim()
 							})
 						text.inputEl.addEventListener('blur', () => {
 							void this.plugin.saveSettings()
@@ -495,9 +503,9 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 					setting.addTextArea((text) => {
 						text
 							.setPlaceholder('Cloze=Cloze_obsidian')
-							.setValue(this.plugin.settings.obsyanki.modelAliases)
+							.setValue(this.plugin.settings.synki.modelAliases)
 							.onChange((value) => {
-								this.plugin.settings.obsyanki.modelAliases = value
+								this.plugin.settings.synki.modelAliases = value
 							})
 						text.inputEl.rows = 4
 						text.inputEl.addEventListener('blur', () => {
@@ -513,9 +521,9 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 					setting.addTextArea((text) => {
 						text
 							.setPlaceholder('Definitions=Definitionen')
-							.setValue(this.plugin.settings.obsyanki.fieldAliases)
+							.setValue(this.plugin.settings.synki.fieldAliases)
 							.onChange((value) => {
-								this.plugin.settings.obsyanki.fieldAliases = value
+								this.plugin.settings.synki.fieldAliases = value
 							})
 						text.inputEl.rows = 8
 						text.inputEl.addEventListener('blur', () => {
@@ -550,7 +558,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 					setting.setName('').addButton((button) => {
 						button.setButtonText('Install / update template')
 						button.onClick(() => {
-							void this.installObsyankiTemplate()
+							void this.installSynkiTemplate()
 						})
 					})
 				},
@@ -559,8 +567,8 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 
 		return [
 			{
-				heading: 'Obsyanki blocks',
-				items: obsyankiFolderItems,
+				heading: 'Synki blocks',
+				items: synkiFolderItems,
 				type: 'group',
 			},
 			{
@@ -620,7 +628,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 									.setValue(this.plugin.settings.sync.mediaMode)
 									.onChange(async (value) => {
 										this.plugin.settings.sync.mediaMode =
-											value as ObsyankiPluginSettings['sync']['mediaMode']
+											value as SynkiPluginSettings['sync']['mediaMode']
 										await this.plugin.saveSettings()
 									})
 							})
@@ -651,7 +659,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 				items: [
 					{
 						desc: sanitizeHTMLToDom(
-							html`Obsyanki can set the file name of flashcard notes to a snippet of text derived from
+							html`Synki can set the file name of flashcard notes to a snippet of text derived from
 								the note’s contents. This feature is
 								<strong>not compatible with Obsidian Sync</strong>.`,
 						),
@@ -677,7 +685,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 									.setValue(this.plugin.settings.manageFilenames.autoRenameTrigger)
 									.onChange(async (value) => {
 										this.plugin.settings.manageFilenames.autoRenameTrigger =
-											value as ObsyankiPluginSettings['manageFilenames']['autoRenameTrigger']
+											value as SynkiPluginSettings['manageFilenames']['autoRenameTrigger']
 										await this.plugin.saveSettings()
 										this.render()
 									})
@@ -697,7 +705,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 									.setValue(this.plugin.settings.manageFilenames.mode)
 									.onChange(async (value) => {
 										this.plugin.settings.manageFilenames.mode =
-											value as ObsyankiPluginSettings['manageFilenames']['mode']
+											value as SynkiPluginSettings['manageFilenames']['mode']
 										await this.plugin.saveSettings()
 									})
 							})
@@ -708,7 +716,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 						render: (setting) => {
 							setting.addText((text) => {
 								text.setPlaceholder(
-									String(getObsyankiPluginDefaultSettings(this.app).manageFilenames.maxLength),
+									String(getSynkiPluginDefaultSettings(this.app).manageFilenames.maxLength),
 								)
 								text.setValue(String(this.plugin.settings.manageFilenames.maxLength))
 								text.onChange((value) => {
@@ -744,7 +752,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 								Anki. See the
 								<a
 									href="https://github.com/kitschpatrol/yanki-obsidian?tab=readme-ov-file#quick-start"
-									>Obsyanki quick start guide</a
+									>Synki quick start guide</a
 								>
 								for instructions on how to set up AnkiConnect, and the
 								<a href="https://git.sr.ht/~foosoft/anki-connect">AnkiConnect documentation</a> for
@@ -770,7 +778,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 									if (parsedUrl === undefined) {
 										new Notice(
 											sanitizeHTMLToDom(
-												html`<strong>Obsyanki:</strong><br />Invalid AnkiConnect host and port.`,
+												html`<strong>Synki:</strong><br />Invalid AnkiConnect host and port.`,
 											),
 										)
 									} else {
@@ -802,19 +810,75 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 						},
 					},
 					{
+						desc: 'Creates a temporary test deck and card through AnkiConnect, verifies it, then deletes it again.',
+						name: 'Test Anki setup',
+						render: (setting) => {
+							setting.addButton((button) => {
+								button.setButtonText('Create and delete test card')
+								button.onClick(() => {
+									void this.testAnkiSetup()
+								})
+							})
+						},
+					},
+					{
+						desc: sanitizeHTMLToDom(
+							html`Install these in Anki via <strong>Tools → Add-ons → Get Add-ons</strong>.
+								Manual install copies the code. Auto install is shown separately because Anki does
+								not expose a safe public install API through AnkiConnect.`,
+						),
+						name: 'Recommended Anki add-ons',
+						render(setting) {
+							setting.setClass('section-description')
+						},
+						searchable: false,
+					},
+					...RECOMMENDED_ANKI_ADDONS.map((addon): SynkiSettingDefinition => ({
+						desc: `${addon.reason} Code: ${addon.code}`,
+						name: addon.name,
+						render: (setting) => {
+							setting
+								.addButton((button) => {
+									button.setButtonText('Copy code')
+									button.onClick(async () => {
+										await navigator.clipboard.writeText(addon.code)
+										new Notice(
+											sanitizeHTMLToDom(
+												html`<strong>Synki:</strong><br />Copied add-on code
+													<code>${addon.code}</code>.`,
+											),
+										)
+									})
+								})
+								.addButton((button) => {
+									button.setButtonText('Auto install')
+									button.onClick(() => {
+										new Notice(
+											sanitizeHTMLToDom(
+												html`<strong>Synki:</strong><br />Auto-installing Anki add-ons is
+													not available through AnkiConnect. Use <strong>Copy code</strong>,
+													then paste it in Anki’s add-on installer.`,
+											),
+											10_000,
+										)
+									})
+								})
+						},
+					})),
+					{
 						name: 'Reset to AnkiConnect defaults',
 						render: (setting) => {
 							setting.setName('').addButton((button) => {
 								button.setButtonText('Reset to AnkiConnect defaults')
 								button.onClick(async () => {
 									this.plugin.settings.ankiConnect = structuredClone(
-										getObsyankiPluginDefaultSettings(this.app).ankiConnect,
+										getSynkiPluginDefaultSettings(this.app).ankiConnect,
 									)
 									await this.plugin.saveSettings()
 									this.render()
 									new Notice(
 										sanitizeHTMLToDom(
-											html`<strong>Obsyanki:</strong><br />Reset Obsyanki’s AnkiConnect settings to
+											html`<strong>Synki:</strong><br />Reset Synki’s AnkiConnect settings to
 												defaults.`,
 										),
 									)
@@ -903,13 +967,13 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 									button.setButtonText('Reset sync stats')
 									button.onClick(async () => {
 										this.plugin.settings.stats.sync = structuredClone(
-											getObsyankiPluginDefaultSettings(this.app).stats.sync,
+											getSynkiPluginDefaultSettings(this.app).stats.sync,
 										)
 										await this.plugin.saveSettings()
 										this.render()
 										new Notice(
 											sanitizeHTMLToDom(
-												html`<strong>Obsyanki:</strong><br />Reset Obsyanki’s sync stats.`,
+												html`<strong>Synki:</strong><br />Reset Synki’s sync stats.`,
 											),
 										)
 									})
@@ -948,7 +1012,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 								vault synchronization. Backup both Obsidian and Anki first. See the
 								<a
 									href="https://github.com/kitschpatrol/yanki-obsidian?tab=readme-ov-file#namespace"
-									>Obsyanki documentation</a
+									>Synki documentation</a
 								>
 								for more details on how namespaces work.`,
 						),
@@ -962,7 +1026,7 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 										this.plugin.settings.namespace = value
 									} else {
 										new Notice(
-											sanitizeHTMLToDom(html`<strong>Obsyanki:</strong><br />Invalid namespace.`),
+											sanitizeHTMLToDom(html`<strong>Synki:</strong><br />Invalid namespace.`),
 										)
 									}
 								})
@@ -991,14 +1055,14 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 
 									button.setButtonText('Reset namespace to vault ID')
 									button.onClick(async () => {
-										this.plugin.settings.namespace = getObsyankiPluginDefaultSettings(
+										this.plugin.settings.namespace = getSynkiPluginDefaultSettings(
 											this.app,
 										).namespace
 										await this.plugin.saveSettings()
 										this.render()
 										new Notice(
 											sanitizeHTMLToDom(
-												html`<strong>Obsyanki:</strong><br />Reset Obsyanki’s namespace to default.`,
+												html`<strong>Synki:</strong><br />Reset Synki’s namespace to default.`,
 											),
 										)
 									})
@@ -1014,11 +1078,11 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 								button.onClick(async () => {
 									// TODO warn!
 
-									this.plugin.settings = structuredClone(getObsyankiPluginDefaultSettings(this.app))
+									this.plugin.settings = structuredClone(getSynkiPluginDefaultSettings(this.app))
 									await this.plugin.saveSettings()
 									this.render()
 									new Notice(
-										sanitizeHTMLToDom(html`<strong>Obsyanki:</strong><br />Reset Obsyanki’s settings.`),
+										sanitizeHTMLToDom(html`<strong>Synki:</strong><br />Reset Synki’s settings.`),
 									)
 								})
 							})
@@ -1032,13 +1096,13 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 	}
 
 	private prepareSettingsDisplay(): void {
-		this.containerEl.addClass('obsyanki-settings')
-		this.containerEl.setAttr('id', 'obsyanki-settings')
+		this.containerEl.addClass('synki-settings')
+		this.containerEl.setAttr('id', 'synki-settings')
 		this.plugin.syncFlashcardNotesToAnki.clear()
 		this.plugin.updateNoteFilenames.clear()
 	}
 
-	private renderLegacySetting(definition: ObsyankiSettingDefinition): void {
+	private renderLegacySetting(definition: SynkiSettingDefinition): void {
 		const { visible = true } = definition
 		const isVisible = typeof visible === 'function' ? visible() : visible
 
@@ -1084,36 +1148,116 @@ export class ObsyankiPluginSettingTab extends PluginSettingTab {
 		this.isSettingsOpen = true
 	}
 
-	private async installObsyankiTemplate(): Promise<void> {
-		const modelName = this.plugin.settings.obsyanki.defaultModelName.trim()
+	private async testAnkiSetup(): Promise<void> {
+		const modelName = this.plugin.settings.synki.defaultModelName.trim()
+		const textFieldName = this.plugin.settings.synki.textFieldName.trim()
+		if (modelName.length === 0 || textFieldName.length === 0) {
+			new Notice(
+				sanitizeHTMLToDom(
+					html`<strong>Synki:</strong><br />Set a note type and text field before testing Anki.`,
+				),
+			)
+			return
+		}
+
+		const fieldNames = this.plugin.settings.synki.fields
+			.split('\n')
+			.map((field) => field.trim())
+			.filter((field) => field.length > 0)
+		const fields = Object.fromEntries(fieldNames.map((field) => [field, ''])) as Record<string, string>
+		fields[textFieldName] =
+			'Synki setup test: {{c1::this temporary card should be deleted automatically::test}}.'
+
+		const timestamp = new Date().toISOString().replaceAll(/\D/gu, '').slice(0, 14)
+		const deckName = `Synki::Setup Test ${timestamp}`
+		const client = new SynkiConnectClient(this.plugin.settings.ankiConnect)
+		let noteId: string | undefined
+
+		try {
+			const missingFields = await client.findMissingModelFields(modelName, fieldNames)
+			if (missingFields.length > 0) {
+				new Notice(
+					sanitizeHTMLToDom(
+						html`<strong>Synki:</strong><br />Cannot test Anki yet. Note type
+							<code>${modelName}</code> is missing:
+							<code>${missingFields.join(', ')}</code>.`,
+					),
+					10_000,
+				)
+				return
+			}
+
+			noteId = await client.addNote({
+				deckName,
+				fields,
+				modelName,
+				tags: ['synki_setup_test'],
+			})
+
+			if (!(await client.noteExists(noteId))) {
+				throw new Error('Temporary note was created but could not be verified.')
+			}
+
+			await client.deleteNote(noteId)
+			await client.deleteDeck(deckName)
+			new Notice(
+				sanitizeHTMLToDom(
+					html`<strong>Synki:</strong><br />Anki setup works. Created, verified, and
+						deleted a temporary test card.`,
+				),
+			)
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error)
+			try {
+				if (noteId !== undefined) {
+					await client.deleteNote(noteId)
+				}
+				await client.deleteDeck(deckName)
+			} catch (cleanupError) {
+				console.warn('Synki Anki setup test cleanup failed', cleanupError)
+			}
+
+			console.error('Synki Anki setup test failed', error)
+			new Notice(
+				sanitizeHTMLToDom(
+					html`<strong>Synki:</strong><br />Anki setup test failed:
+						<code>${message}</code>`,
+				),
+				10_000,
+			)
+		}
+	}
+
+	private async installSynkiTemplate(): Promise<void> {
+		const modelName = this.plugin.settings.synki.defaultModelName.trim()
 		if (modelName.length === 0) {
 			new Notice(
-				sanitizeHTMLToDom(html`<strong>Obsyanki:</strong><br />Set a note type first.`),
+				sanitizeHTMLToDom(html`<strong>Synki:</strong><br />Set a note type first.`),
 			)
 			return
 		}
 
 		try {
-			const client = new ObsyankiConnectClient(this.plugin.settings.ankiConnect)
+			const client = new SynkiConnectClient(this.plugin.settings.ankiConnect)
 			await client.updateModelTemplate({
-				back: OBSYANKI_BACK_TEMPLATE,
-				css: OBSYANKI_STYLING,
-				front: OBSYANKI_FRONT_TEMPLATE,
+				back: SYNKI_BACK_TEMPLATE,
+				css: SYNKI_STYLING,
+				front: SYNKI_FRONT_TEMPLATE,
 				modelName,
-				templateName: OBSYANKI_TEMPLATE_NAME,
+				templateName: SYNKI_TEMPLATE_NAME,
 			})
 			new Notice(
 				sanitizeHTMLToDom(
-					html`<strong>Obsyanki:</strong><br />Updated Anki template for
+					html`<strong>Synki:</strong><br />Updated Anki template for
 						<code>${modelName}</code>.`,
 				),
 			)
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error)
-			console.error('Obsyanki template install failed', error)
+			console.error('Synki template install failed', error)
 			new Notice(
 				sanitizeHTMLToDom(
-					html`<strong>Obsyanki:</strong><br />Template update failed:
+					html`<strong>Synki:</strong><br />Template update failed:
 						<code>${message}</code>`,
 				),
 				10_000,

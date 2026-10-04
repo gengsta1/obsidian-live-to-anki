@@ -1,10 +1,10 @@
 {
   "author": "gengsta1, based on Yanki by Kitschpatrol",
   "authorUrl": "https://github.com/gengsta1",
-  "description": "Sync embedded Obsyanki blocks from Obsidian notes to Anki.",
-  "id": "obsyanki",
+  "description": "Sync embedded Synki blocks from Obsidian notes to Anki.",
+  "id": "synki",
   "version": "0.1.0",
   "isDesktopOnly": true,
   "minAppVersion": "1.9.12",
-  "name": "Obsyanki"
+  "name": "Synki"
 }
